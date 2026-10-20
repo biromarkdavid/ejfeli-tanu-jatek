@@ -150,6 +150,7 @@ textarea{width:100%;min-height:42vh;padding:12px;border-radius:12px;border:1px s
 .flip{animation:flip 1.2s ease}
 @keyframes flip{0%{transform:rotateY(90deg)}100%{transform:rotateY(0)}}
 .cat{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+a.btn{text-decoration:none;display:block;text-align:center}
 .tile.locked img{filter:grayscale(.75) brightness(.5)}
 .tile{position:relative;aspect-ratio:1/1;border-radius:16px;overflow:hidden;cursor:pointer;border:1px solid var(--line);box-shadow:0 6px 18px #0008}
 .tile img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s}
@@ -241,6 +242,8 @@ const ROUND = "ABC";
 /* ===================== shop API: story texts only for the logged-in owner or a host's 24 h token ===================== */
 const API = "https://nuvugames.net/wp-json/et/v1", SHOP = "https://nuvugames.net";
 const STORIES = window.CATALOG, FULL = {}, TOK = {};
+const BUG = SHOP + "/ejfeli-tanu/#kapcsolat";  // bug report / feedback form (goes to hello@nuvugames.net)
+const bugLink = () => `<a class="btn ghost small" href="${BUG}" target="_blank" rel="noopener" style="margin-top:10px;opacity:.75">Hibát találtál vagy véleményed van? Írd meg nekünk</a>`;
 let LIB = {logged: false, owned: [], name: ""};
 async function apiStory(id, t) {
   if (FULL[id]) return FULL[id];
@@ -329,6 +332,7 @@ function settingsModal() {
   modal(`<h2>Beállítások</h2>
     ${row("music", "Zene")}${row("narration", "Narráció")}${row("sfx", "Hangjelzések")}
     <label class="tg"><b>Nyelv</b><select class="langsel"><option value="hu" selected>Magyar</option><option value="en" disabled>English (hamarosan)</option></select></label>
+    ${bugLink()}
     ${inGame ? `<button class="btn ghost" id="quit" style="margin-top:18px;color:#f19a92;border-color:#f19a9255">${icon("exit", "inl")} Kilépés: feladom a játékot</button>` : ""}`);
   document.querySelectorAll("#modal [data-k]").forEach(e => e.onchange = () => {
     CFG[e.dataset.k] = e.checked; saveCFG(); if (!CFG.narration && window.speechSynthesis) speechSynthesis.cancel();
@@ -1098,7 +1102,7 @@ function voteRender(st, revealing, iVoted, guess) {
       // one closing screen instead of 2-3 steps: verdict, true roles, solution and missions (as toggles), new game
       const more = `<div class="rvmore"><details class="tog"><summary>Mi történt valójában</summary><p>${esc(S.solution)}</p></details>
         <details class="tog"><summary>Személyes titkok</summary>${P.ch.map(sl => `<p class="small"><b>${esc(S.chars[sl].name)}</b>: ${esc(S.chars[sl].secret)}</p>`).join("")}<p class="small muted">Meséljétek el, ki mit titkolt!</p></details></div>`;
-      h = h.replace('<div class="reveal">', '<div class="reveal done">').replace(/<\/div><\/div>$/, `${roles}${more}<button class="btn" id="new">Új játék</button></div></div>`);
+      h = h.replace('<div class="reveal">', '<div class="reveal done">').replace(/<\/div><\/div>$/, `${roles}${more}<button class="btn" id="new">Új játék</button>${bugLink()}</div></div>`);
     }
   }
   app.innerHTML = h; window.scrollTo(0, 0);
@@ -1116,7 +1120,7 @@ function finalView(outcome) {
     <div class="panel"><h3>Mi történt valójában</h3><p>${esc(S.solution)}</p></div><h3>Ki kicsoda volt</h3><div class="grid">`;
   P.ch.forEach(sl => { const c = S.chars[sl], ev = c.role === "G" || c.role === "B"; h += `<div class="c">${pimg(S, sl, {evil: ev})}<b>${esc(c.name)}</b><br><span class="badge ${ev ? "red" : c.role === "S" ? "blue" : ""}">${c.roleName}</span></div>`; });
   h += `</div><div class="panel"><h3>Személyes titkok</h3><p class="small muted">Meséljétek el, ki mit titkolt!</p>` +
-    P.ch.map(sl => `<p class="small"><b>${esc(S.chars[sl].name)}</b>: ${esc(S.chars[sl].secret)}</p>`).join("") + `</div><button class="btn" id="new">Új játék</button>`;
+    P.ch.map(sl => `<p class="small"><b>${esc(S.chars[sl].name)}</b>: ${esc(S.chars[sl].secret)}</p>`).join("") + `</div><button class="btn" id="new">Új játék</button>${bugLink()}`;
   app.innerHTML = h; window.scrollTo(0, 0);
   $("#new").onclick = () => { location.hash = ""; location.reload(); };
 }
@@ -1213,7 +1217,7 @@ function voteFlow() {
     P.ch.forEach((sl, j) => { const c = S.chars[sl], ev = c.role === "G" || c.role === "B"; h += `<div class="c">${pimg(S, sl, {evil: ev})}<b>${esc(c.name)}</b><br><span class="badge ${ev ? "red" : c.role === "S" ? "blue" : ""}">${c.roleName}</span></div>`; });
     h += `</div><div class="panel"><h3>Személyes titkok</h3><p class="small muted">Meséljétek el, ki mit titkolt!</p>` +
       P.ch.map((sl, j) => `<p class="small"><b>${esc(S.chars[sl].name)}</b>: ${esc(S.chars[sl].secret)}</p>`).join("") +
-      `</div><button class="btn" id="new">Új játék</button>`;
+      `</div><button class="btn" id="new">Új játék</button>${bugLink()}`;
     app.innerHTML = h;
     $("#new").onclick = () => { location.hash = ""; location.reload(); };
   }
