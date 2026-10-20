@@ -1,0 +1,1235 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Éjféli Tanú</title>
+<meta name="description" content="Titkos szerepes gyilkosos nyomozós partijáték 4-6 főre, mindenki a saját telefonján.">
+<meta name="theme-color" content="#121016">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="catalog.js"></script>
+<style>
+:root{
+  --bg:#121016; --panel:#1c1922; --panel2:#25212d; --line:#3a3444;
+  --text:#ece6dc; --muted:#a59cad; --gold:#d9b46a; --gold2:#f0d79c;
+  --red:#d2554d; --green:#6fbf8a; --blue:#7aa7d9;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font-family:Inter,system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.5;
+  background:radial-gradient(ellipse at top,#2a2030 0%,var(--bg) 60%) fixed;min-height:100vh}
+#app{max-width:560px;margin:0 auto;padding:20px 16px calc(40px + env(safe-area-inset-bottom))}
+h1,h2,h3{font-family:"Playfair Display",Georgia,serif;margin:0 0 .4em;line-height:1.2}
+h1{font-size:2.2rem;color:var(--gold2)} h2{font-size:1.45rem;color:var(--gold2)} h3{font-size:1.05rem;color:var(--gold)}
+p{margin:.4em 0 .9em}
+.muted{color:var(--muted)} .small{font-size:.88rem} .center{text-align:center}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0}
+.btn{display:block;width:100%;padding:14px 16px;margin:10px 0;border:0;border-radius:12px;font:600 1.02rem Inter,sans-serif;
+  background:var(--gold);color:#1a1410;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--gold2);border:1px solid var(--line)}
+.btn:disabled{opacity:.4}
+input,select{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:1rem Inter,sans-serif}
+label{display:block;margin:8px 0 4px;color:var(--muted);font-size:.9rem}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:9px 13px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;font-size:.92rem}
+.chip.on{background:var(--gold);color:#1a1410;border-color:var(--gold)}
+.story{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin:6px 0;cursor:pointer;background:var(--panel2)}
+.story.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.75rem;font-weight:600;background:#2f3a2f;color:var(--green)}
+.badge.red{background:#3a2424;color:#f19a92} .badge.blue{background:#22303f;color:var(--blue)} .badge.gold{background:#3a3020;color:var(--gold2)}
+.qrbox{background:#fff;padding:14px;border-radius:14px;display:inline-block;margin:10px auto}
+/* reading */
+.topbar{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0 8px}
+.bar{height:10px;border-radius:99px;background:var(--panel2);overflow:hidden;position:relative}
+.bar>i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:99px}
+.bar>i{transition:width .25s linear,background .4s}
+.bar.low>i{background:linear-gradient(90deg,#c0392b,#e8574a);box-shadow:0 0 10px #e8574a88}
+.bar .tick{position:absolute;top:0;bottom:0;width:2px;background:var(--bg)}
+.steps{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted);margin-top:6px}
+.steps b{color:var(--gold2)}
+.pfp{width:96px;aspect-ratio:2/3;object-fit:cover;border-radius:12px;border:2px solid var(--gold);background:#2a2430}
+.kv{margin:10px 0}
+.kv b{display:block;color:var(--gold);font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.role{font:800 1.6rem "Playfair Display",serif;letter-spacing:.04em}
+.role.G,.role.B{color:#f19a92} .role.S{color:var(--blue)} .role.N{color:var(--green)}
+/* scene */
+#scene{position:fixed;inset:0;overflow:hidden;background:#0d0b10}
+#scene .bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:brightness(.62) saturate(.9)}
+#scene .bg.none{background:radial-gradient(ellipse at 50% 55%,#3a2a36 0%,#16121a 70%)}
+.hud{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:flex-start;padding:calc(10px + env(safe-area-inset-top)) 12px 0;z-index:3}
+.hbtn{width:52px;height:52px;border-radius:14px;border:1px solid #ffffff30;background:#00000070;color:#fff;font-size:1.5rem;display:grid;place-items:center;cursor:pointer;backdrop-filter:blur(4px)}
+.hright{display:flex;flex-direction:column;gap:8px}
+#clock{width:min(34vw,150px);height:min(34vw,150px);filter:drop-shadow(0 4px 16px #0009)}
+#clock.urgent{animation:pulse 1s infinite}
+#clock.paused{opacity:.75}
+@keyframes pulse{50%{transform:scale(1.05)}}
+.stage{position:absolute;left:0;right:0;top:calc(min(34vw,150px) + 30px);bottom:calc(58px + env(safe-area-inset-bottom));z-index:2}
+.tray{position:absolute;left:0;right:0;bottom:calc(12px + env(safe-area-inset-bottom));display:flex;justify-content:center;gap:8px;z-index:3;pointer-events:none}
+.tray .tk{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--c);color:#fff;border:1.5px solid #fff;box-shadow:0 2px 6px #000a;transition:background .3s,opacity .3s}
+.tray .tk .ic{width:19px;height:19px}
+.tray .tk.used{background:#4a4650;opacity:.55;border-color:#ffffff55}
+.victim{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;color:#e6c7c2;font-size:.8rem;pointer-events:none}
+.victim .vb{font-size:2.2rem;opacity:.7}
+.victim.img .vb,.victim.img .vn{visibility:hidden}
+/* Windows-help style "?" on the body in the middle of the scene: opens the story facts */
+.helpq{position:absolute;left:50%;top:50%;transform:translate(-50%,calc(-50% - min(10vh,90px)));width:46px;height:46px;border-radius:12px;border:1px solid #ffffff44;background:#00000040;color:#c9c4bc;opacity:.75;display:grid;place-items:center;cursor:pointer;z-index:2;padding:0;backdrop-filter:blur(2px)}
+.helpq .ic{width:26px;height:26px;stroke-width:2.4}
+.ch{position:absolute;width:min(31vw,124px);transform:translate(-50%,-50%);text-align:center;cursor:pointer}
+.ch .av{width:min(22vw,88px);height:min(22vw,88px);margin:0 auto;border-radius:50%;overflow:hidden;border:2px solid #ffffffaa;box-shadow:0 4px 14px #000c;background:#2a2430;position:relative}
+.ch .av img{position:absolute;width:210%;left:-55%;top:-6%;max-width:none}
+.avw{position:relative;width:min(22vw,88px);margin:0 auto}
+
+.ch .nw{font-style:normal;white-space:nowrap}
+.ch .mk{display:inline-grid;place-items:center;width:1.15em;height:1.15em;border-radius:50%;background:var(--c);border:1px solid #fff;vertical-align:-.22em;margin-left:4px;box-shadow:0 1px 3px #000a;line-height:0}
+.ch .mk .ic{width:.72em;height:.72em}
+.ballot .vrow{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:var(--panel2);margin:8px 0;cursor:pointer}
+.ballot .vrow.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;background:#2c2316}
+.ballot .vrow .av{width:54px;height:54px;border-radius:50%;overflow:hidden;position:relative;flex:0 0 auto;border:2px solid #ffffff55;background:#2a2430}
+.ballot .vrow .av img{position:absolute;width:210%;left:-55%;top:-6%;max-width:none}
+.ballot .vrow .nm{flex:1;min-width:0}.ballot .vrow .nm b{display:block}.ballot .vrow .nm small{color:var(--muted);font-size:.8rem}
+.ballot .mymk{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.66rem;color:var(--c);font-weight:600;flex:0 0 auto}
+.ballot .mymk i{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--c);color:#fff}
+.ballot .mymk .ic{width:15px;height:15px}
+.reveal{position:fixed;inset:0;z-index:5;overflow:auto;background:#000}
+.reveal .rvbg{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%;filter:grayscale(1) contrast(1.15) brightness(.6);animation:rvzoom 6s ease-out both}
+@keyframes rvzoom{from{transform:scale(1.12)}to{transform:scale(1)}}
+.reveal::after{content:"";position:fixed;inset:0;background:linear-gradient(180deg,#0000 25%,#000c 62%,#000f);pointer-events:none}
+.reveal .rvin{position:relative;z-index:2;min-height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end;padding:40vh 18px calc(22px + env(safe-area-inset-bottom));text-align:center;max-width:560px;margin:0 auto}
+.reveal .rvname{font:700 2.1rem 'Playfair Display',serif;color:#fff;margin:0 0 4px;text-shadow:0 2px 12px #000}
+.reveal .rvrole{font:800 1.7rem 'Playfair Display',serif;margin:6px 0;text-shadow:0 2px 12px #000;letter-spacing:.02em}
+.reveal p{color:#eee;text-shadow:0 1px 6px #000}
+.reveal .ballot{text-align:left}
+.reveal.done .rvin{justify-content:flex-start;padding-top:calc(14vh + env(safe-area-inset-top))}
+.reveal.done::after{background:linear-gradient(180deg,#0006,#000d 45%,#000f)}
+.reveal .rvmore{text-align:left;background:#000a;border:1px solid #ffffff22;border-radius:14px;padding:4px 14px;margin:8px 0}
+.reveal .rvmore .tog{border-top:0;margin:0}.reveal .rvmore .tog+.tog{border-top:1px solid #ffffff22}
+.lies{display:flex;flex-direction:column;gap:8px;margin:8px 0}
+.lie{display:block;text-align:left;width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#ffffff0d;color:inherit;font:inherit;font-size:1rem;cursor:pointer}
+.lie small{display:block;margin-top:4px;color:#e8913a;font-size:.8rem}
+.lie.on{border-color:var(--gold2);background:#d9b46a26;box-shadow:0 0 0 2px #d9b46a55}
+.rvroles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 8px;margin:22px 0 8px}
+.rvroles .rr{display:flex;flex-direction:column;align-items:center;gap:3px}
+.rvroles .av{width:68px;height:68px;border-radius:50%;overflow:hidden;position:relative;border:2px solid #ffffff66;background:#2a2430}
+.rvroles .av img{position:absolute;width:210%;left:-55%;top:-6%;max-width:none}
+.rvroles i{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--c);color:#fff;border:1.5px solid #fff;margin-top:-14px;position:relative}
+.rvroles i .ic{width:15px;height:15px}
+.rvroles small{font-size:.74rem;line-height:1.15;color:#fff}.rvroles small.muted{color:#bbb;font-size:.66rem;letter-spacing:.05em}
+.suspick{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.suspick b{display:block;color:var(--gold);font-size:.82rem;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.suspick .opts{display:flex;gap:6px}
+.suspick button{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 2px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--muted);font:600 .7rem Inter,sans-serif;cursor:pointer}
+.suspick button i{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#ffffff14;color:var(--c)}
+.suspick button.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 22%,var(--panel2));color:#fff}
+.suspick button.on i{background:var(--c);color:#fff}
+.ch span{display:block;font-size:.8rem;line-height:1.2;margin-top:10px;position:relative;z-index:3;text-shadow:0 1px 4px #000;color:#fff}
+.ch.me .av{border:3px solid #f0d79c;box-shadow:0 0 0 3px #1a1410,0 0 0 5px #d9b46a,0 0 0 6px #1a1410,0 0 0 7px #d9b46a88,0 0 22px 6px #d9b46a77,0 4px 14px #000c}
+.ch.me>span{color:var(--gold2);font-weight:700}
+.subs{position:absolute;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:4;background:#000000b8;border:1px solid #ffffff22;border-radius:14px;padding:14px;max-height:46vh;overflow:auto}
+.modal{position:fixed;inset:0;z-index:20;background:#000000d8;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal .box{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;max-width:520px;width:100%;max-height:92vh;overflow:auto;position:relative}
+.modal .x{position:absolute;right:10px;top:8px;background:none;border:0;color:var(--muted);font-size:1.6rem;cursor:pointer}
+.zoomimg{width:100%;border-radius:12px;cursor:zoom-in;display:block}
+.zoomwrap{overflow:auto;border-radius:12px;max-height:60vh;touch-action:pan-x pan-y pinch-zoom}
+.zoomwrap.z .zoomimg{width:260%;max-width:none;cursor:zoom-out}
+.tipbox{border:2px solid var(--gold);text-align:left}
+.tipbox h2{color:var(--gold2)}
+textarea{width:100%;min-height:42vh;padding:12px;border-radius:12px;border:1px solid var(--line);background:#fbf6ea;color:#2b2233;font:1rem/1.5 Georgia,serif}
+.sus{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.sus button{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:999px;padding:6px 10px;font-size:.82rem}
+.sus button.s1{background:#4a2a26;border-color:var(--red)} .sus button.s2{background:#24382a;border-color:var(--green)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.grid .c{text-align:center;font-size:.8rem}
+.grid img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:10px;border:2px solid var(--line)}
+.grid .c.on img{border-color:var(--gold)}
+.evil{filter:sepia(.4) saturate(1.6) hue-rotate(-25deg) contrast(1.15) brightness(.8)}
+.flip{animation:flip 1.2s ease}
+@keyframes flip{0%{transform:rotateY(90deg)}100%{transform:rotateY(0)}}
+.cat{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.tile.locked img{filter:grayscale(.75) brightness(.5)}
+.tile{position:relative;aspect-ratio:1/1;border-radius:16px;overflow:hidden;cursor:pointer;border:1px solid var(--line);box-shadow:0 6px 18px #0008}
+.tile img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s}
+.tile:active img{transform:scale(1.05)}
+.tile .tt{position:absolute;left:0;right:0;bottom:0;padding:24px 10px 9px;background:linear-gradient(transparent,#000d);font-size:.92rem;line-height:1.25}
+.tile .tt .badge{margin-left:6px}
+.cover{position:fixed;inset:0;z-index:30;background:#0d0b10;animation:zoomin .6s cubic-bezier(.2,.8,.2,1)}
+@keyframes zoomin{from{transform:scale(.3);opacity:.2;border-radius:30px}to{transform:scale(1);opacity:1;border-radius:0}}
+.cover .bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:brightness(.55)}
+.cover .cin{position:absolute;inset:0;display:flex;flex-direction:column;padding:calc(18px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto}
+.cover .ctext{flex:1;overflow:auto;background:#000000a8;border:1px solid #ffffff22;border-radius:16px;padding:16px;margin-bottom:12px;animation:fadein 1.2s .4s both}
+@keyframes fadein{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+/* setup: crossfade into the crime scene, two half-dials (time / players) joined by a band with the start button */
+.cover .bg2{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transform:scale(1.18);filter:brightness(.5) saturate(.9);transition:opacity 1.4s ease,transform 2.6s cubic-bezier(.2,.8,.2,1)}
+.cover.setup .bg{transform:scale(1.12);opacity:.0;transition:opacity 1.4s ease,transform 1.6s ease}
+.cover.setup .bg2{opacity:1;transform:scale(1)}
+.cover .ctext,.cover .cbot{transition:opacity .5s ease,transform .5s ease}
+.cover .cstart{display:none;margin:16px 0 2px;opacity:0;transform:translateY(8px);transition:opacity .6s ease,transform .6s ease}
+.cover .cstart.show{display:block;animation:cstartin .6s ease forwards}
+@keyframes cstartin{to{opacity:1;transform:none}}
+.cover.setup .ctext,.cover.setup .cbot{animation:none;opacity:0;transform:translateY(-14px);pointer-events:none}
+.cover.setup .cin{pointer-events:none} .cover.setup .cin button{pointer-events:auto}
+.setup-st{position:absolute;inset:0;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+.setup-st .dial{position:absolute;border-radius:50%;background:radial-gradient(circle,#0000 58%,#1a1520e6 59%,#0f0c12f0 100%);box-shadow:0 0 0 1px #d9b46a55,0 0 40px #000c inset,0 0 30px #0009;opacity:0;transition:opacity .8s ease .9s,transform .9s cubic-bezier(.2,.8,.2,1) .9s}
+.setup-st .dial.l{transform:translateX(-60px)} .setup-st .dial.r{transform:translateX(60px)}
+.setup-st.in .dial{opacity:1;transform:none}
+.setup-st .dial svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.setup-st .val{position:absolute;transform:translate(-50%,-50%);text-align:center;font:700 1.15rem 'Playfair Display',serif;color:var(--muted);opacity:0;transition:opacity .6s 1.2s,color .2s,font-size .2s;pointer-events:auto;cursor:pointer;line-height:1}
+.setup-st.in .val{opacity:.55} .setup-st.in .val.on{opacity:1;color:var(--gold2);font-size:2.05rem;text-shadow:0 0 18px #d9b46a88}
+.setup-st .val small{display:block;font:500 .62rem Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;margin-top:3px;color:var(--muted)}
+.setup-st .val.on small{color:var(--gold)}
+.setup-st .cap{position:absolute;transform:translateX(-50%);font:600 .72rem Inter,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);opacity:0;transition:opacity .6s 1.3s}
+.setup-st.in .cap{opacity:.9}
+.setup-st .band{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,#d9b46a00,#d9b46acc 18%,#f0d79c 50%,#d9b46acc 82%,#d9b46a00);box-shadow:0 0 14px #d9b46a99;transform:scaleX(0);transition:transform .9s cubic-bezier(.2,.8,.2,1) 1.4s}
+.setup-st.in .band{transform:scaleX(1)}
+.setup-st .go{position:absolute;transform:translate(-50%,-50%) scale(.6);width:118px;height:118px;border-radius:50%;border:0;cursor:pointer;opacity:0;
+  background:radial-gradient(circle at 50% 35%,#f0d79c,#d9b46a 55%,#9c7a3a);color:#1a1410;font:700 1rem/1.2 'Playfair Display',serif;box-shadow:0 0 0 6px #0d0b10,0 0 0 7px #d9b46a88,0 0 40px #d9b46a77;transition:opacity .6s 1.7s,transform .6s cubic-bezier(.3,1.6,.5,1) 1.7s}
+.setup-st.in .go{opacity:1;transform:translate(-50%,-50%) scale(1);animation:gopulse 2.4s 2.4s ease-in-out infinite}
+.setup-st .go:active{transform:translate(-50%,-50%) scale(.94)}
+@keyframes gopulse{50%{box-shadow:0 0 0 6px #0d0b10,0 0 0 7px #d9b46acc,0 0 60px #d9b46aaa}}
+.tg{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.tg .langsel{width:auto;flex:0 0 auto;padding:8px 10px;font-size:.95rem}
+.tg input{width:46px;height:26px;accent-color:var(--gold);flex:0 0 auto}
+.storytxt{font-size:1.05rem;line-height:1.6;cursor:pointer}
+.storytxt .key{color:var(--gold2);text-decoration:underline;text-underline-offset:3px}
+.caret{animation:blink .8s steps(1) infinite;color:var(--gold)} @keyframes blink{50%{opacity:0}}
+.mine{margin-top:18px;border:2px solid var(--gold);border-radius:18px;padding:14px;background:linear-gradient(180deg,#2c2316,#1c1922)}
+.mine details{border-top:1px solid #ffffff22;margin-top:10px;padding-top:8px}
+.mine summary{cursor:pointer;font-weight:600;color:var(--gold2);list-style:none;display:flex;justify-content:space-between;align-items:center;padding:4px 0}
+.mine summary::after{content:"▾";transition:transform .2s}.mine details:not([open]) summary::after{transform:rotate(-90deg)}
+.mine summary::-webkit-details-marker{display:none}
+.tog{border-top:1px solid var(--line);margin-top:12px;padding-top:6px}
+.tog summary{cursor:pointer;font-weight:600;color:var(--gold2);list-style:none;display:flex;justify-content:space-between;align-items:center;padding:8px 0}
+.tog summary::after{content:"▾";transition:transform .2s}.tog:not([open]) summary::after{transform:rotate(-90deg)}
+.tog summary::-webkit-details-marker{display:none}
+.mine .panel{margin:2px 0 6px;padding:0 4px;background:none;border:0;border-radius:0}
+.ic{width:24px;height:24px;display:inline-block;vertical-align:middle;flex:0 0 auto}
+.hbtn .ic{width:26px;height:26px}
+.ic.inl{width:1.1em;height:1.1em;margin-top:-.15em}
+.modal .x .ic{width:22px;height:22px}
+.victim .vb .ic{width:34px;height:34px;opacity:.7}
+.drumb .ic{animation:pulse .25s infinite}
+.chead{display:flex;align-items:center;gap:12px;padding-right:34px;margin-bottom:8px}
+.chead .av{width:64px;height:64px;border-radius:50%;overflow:hidden;position:relative;border:2px solid var(--gold);flex:0 0 auto;background:#2a2430}
+.chead .av img{position:absolute;width:210%;left:-55%;top:-6%;max-width:none}
+.zoomb{width:46px;height:46px;flex:0 0 auto;background:var(--panel2)}
+.photo{position:fixed;inset:0;z-index:40;background:#000;display:flex;flex-direction:column}
+.pwrap{flex:1;overflow:auto;touch-action:pan-x pan-y pinch-zoom;display:flex;align-items:center;justify-content:center}
+.pwrap .pimg{max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-in}
+.pwrap.z{display:block}.pwrap.z .pimg{max-width:none;max-height:none;width:260%;cursor:zoom-out}
+.pcap{padding:10px 16px calc(34px + env(safe-area-inset-bottom));font-size:.9rem;color:#ddd;background:#111}
+.movehint{position:absolute;left:50%;top:50%;width:92px;height:92px;margin:-46px 0 0 -46px;border-radius:50%;background:#000a;border:2px solid #fff;display:grid;place-items:center;color:#fff;pointer-events:none;z-index:3;
+  animation:moveblink .55s ease-in-out 4 both,movefade .4s ease 2.2s forwards}
+.movehint .ic{width:58px;height:58px;stroke-width:2}
+@keyframes moveblink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.15;transform:scale(.88)}}
+@keyframes movefade{to{opacity:0;visibility:hidden}}
+.phint{position:absolute;bottom:calc(10px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;color:#fff9;font-size:.8rem;margin:0;pointer-events:none}
+.big{font:800 2rem "Playfair Display",serif;text-align:center;margin:10px 0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+"use strict";
+/* ===================== constants ===================== */
+const TIP = 30;                     // seconds a private tip stays on screen, clock paused
+const TIPS_AT = {15: [450], 30: [1200, 600], 60: [2700, 1800, 900]};  // remaining seconds
+const ROUND = "ABC";
+/* ===================== shop API: story texts only for the logged-in owner or a host's 24 h token ===================== */
+const API = "https://nuvugames.net/wp-json/et/v1", SHOP = "https://nuvugames.net";
+const STORIES = window.CATALOG, FULL = {}, TOK = {};
+let LIB = {logged: false, owned: [], name: ""};
+async function apiStory(id, t) {
+  if (FULL[id]) return FULL[id];
+  const r = await fetch(`${API}/story/${id}` + (t ? `?t=${encodeURIComponent(t)}` : ""), {credentials: "include"});
+  if (!r.ok) { const e = new Error("locked"); e.status = r.status; throw e; }
+  const d = await r.json(); FULL[id] = d.story; TOK[id] = d.token; return d.story;
+}
+async function apiLibrary() {
+  try { const r = await fetch(`${API}/library`, {credentials: "include"}); if (r.ok) LIB = await r.json(); } catch (e) {}
+  return LIB;
+}
+const STORE = "et3-";
+
+/* ===================== helpers ===================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const app = document.getElementById("app");
+function ls(k, v) {
+  try { if (v === undefined) return JSON.parse(localStorage.getItem(STORE + k) || "null"); localStorage.setItem(STORE + k, JSON.stringify(v)); } catch (e) { return null; }
+}
+function placeholder(name, evil) {
+  const ini = name.split(/\s+/).filter(w => /^[A-ZÁÉÍÓÖŐÚÜŰ]/.test(w)).map(w => w[0]).join("").slice(0, 2) || name[0];
+  const bg = evil ? "#4a1f22" : "#2c2534";
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 300'><rect width='200' height='300' fill='${bg}'/>` +
+    `<circle cx='100' cy='105' r='42' fill='#00000055'/><path d='M30 300 C30 200 170 200 170 300Z' fill='#00000055'/>` +
+    `<text x='100' y='122' font-family='Georgia' font-size='46' fill='#d9b46a' text-anchor='middle'>${ini}</text>` +
+    `<text x='100' y='282' font-family='Arial' font-size='15' fill='#a59cad' text-anchor='middle'>KÉP HELYE</text></svg>`;
+  return "data:image/svg+xml," + encodeURIComponent(svg).replace(/'/g, "%27");
+}
+function pimg(story, slot, opts = {}) {
+  const c = story.chars[slot];
+  const src = `assets/${story.id}/K${slot + 1}${opts.evil ? "_evil" : ""}.jpg`;
+  const fallback = opts.evil ? `assets/${story.id}/K${slot + 1}.jpg` : placeholder(c.name, false);
+  return `<img src="${src}" alt="${esc(c.name)}" class="${opts.cls || ""}${opts.evil ? " evilf" : ""}" ` +
+    `onerror="if(this.dataset.f){this.onerror=null;this.src='${placeholder(c.name, !!opts.evil)}'}else{this.dataset.f=1;this.src='${fallback}';${opts.evil ? "this.classList.add('evil');" : ""}}">`;
+}
+
+/* ===================== icon set (own line icons, no emoji) ===================== */
+const ICON = {
+  zoom: `<circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/><path d="M10.5 7.5v6"/><path d="M7.5 10.5h6"/>`,
+  gear: `<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>`,
+  back: `<path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/>`,
+  sound: `<path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.4 5.6a9 9 0 0 1 0 12.8"/>`,
+  mute: `<path d="M11 5 6 9H3v6h3l5 4z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/>`,
+  book: `<path d="M5 3.5h11a2 2 0 0 1 2 2v15H7a2 2 0 0 1-2-2z"/><path d="M5 18.5a2 2 0 0 1 2-2h11"/><path d="M9 7.5h5"/><path d="M9 11h5"/>`,
+  map: `<path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>`,
+  scroll: `<path d="M7 4h11a2 2 0 0 1 2 2v1h-4"/><path d="M16 7v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1h10"/><path d="M7 4a2 2 0 0 0-2 2v11"/><path d="M9 9h4"/><path d="M9 12.5h4"/>`,
+  lock: `<rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.2" fill="currentColor"/>`,
+  exit: `<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M10 16l-4-4 4-4"/><path d="M6 12h10"/>`,
+  move: `<path d="M12 3v18"/><path d="M3 12h18"/><path d="M9 6l3-3 3 3"/><path d="M9 18l3 3 3-3"/><path d="M6 9l-3 3 3 3"/><path d="M18 9l3 3-3 3"/>`,
+  close: `<path d="M6 6l12 12"/><path d="M18 6 6 18"/>`,
+  cross: `<path d="M12 3v18"/><path d="M6.5 8.5h11"/>`,
+  drum: `<ellipse cx="12" cy="9" rx="8" ry="3.5"/><path d="M4 9v6.5C4 17.4 7.6 19 12 19s8-1.6 8-3.5V9"/><path d="M8 4.5l3 4"/><path d="M16 4.5l-3 4"/>`,
+  q: `<path d="M9.2 9.2a2.9 2.9 0 1 1 4.3 2.5c-.9.5-1.5 1.2-1.5 2.2v.6"/><circle cx="12" cy="18" r=".6" fill="currentColor"/>`,
+  ok: `<path d="M7.5 11v8.5H4.5V11z"/><path d="M7.5 11l3.6-6.3c1.4 0 2.3 1.1 1.9 2.6L12.4 10h5.1a1.9 1.9 0 0 1 1.9 2.2l-1.1 5.7a1.9 1.9 0 0 1-1.9 1.6H7.5"/>`,
+  eye: `<path d="M2.5 12s3.4-5.8 9.5-5.8 9.5 5.8 9.5 5.8-3.4 5.8-9.5 5.8S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.6"/>`,
+  knife: `<path d="M14.6 3.4c2.6.1 5.9 2.6 6 5.2L10.8 18.4l-4.2-4.2z"/><path d="M5.2 12.6l6.2 6.2"/><path d="M6.6 16.8l-3 3a1.4 1.4 0 0 0 2 2l3-3"/>`,
+  hands: `<path d="m11 17 2 2a1 1 0 1 0 3-3"/><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.9-3.9a3 3 0 0 0-4.2 0l-.9.9a1 1 0 1 1-3-3l2.8-2.8a5.8 5.8 0 0 1 7.1-.9l.5.3a2 2 0 0 0 1.4.3L21 4"/><path d="m21 3 1 11h-2"/><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3"/><path d="M3 4h8"/>`,
+};
+const icon = (k, cls = "", sz) => `<svg class="ic ${cls}" ${sz ? `width="${sz}" height="${sz}"` : ""} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>`;
+
+/* ===================== card link encoding ===================== */
+const KEY = "ejfeli-tanu-1462";
+function b64u(bytes) { let s = ""; bytes.forEach(b => s += String.fromCharCode(b)); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+function unb64u(str) { str = str.replace(/-/g, "+").replace(/_/g, "/"); while (str.length % 4) str += "="; const s = atob(str); return Uint8Array.from(s, c => c.charCodeAt(0)); }
+function encodeCard(obj) {
+  const raw = new TextEncoder().encode(JSON.stringify(obj));
+  const out = new Uint8Array(raw.length + 1); let sum = 0;
+  raw.forEach((b, i) => { out[i] = b ^ KEY.charCodeAt(i % KEY.length); sum = (sum + b * (i + 7)) & 255; });
+  out[raw.length] = sum; return b64u(out);
+}
+function decodeCard(str) {
+  const d = unb64u(str); const raw = new Uint8Array(d.length - 1); let sum = 0;
+  for (let i = 0; i < raw.length; i++) { raw[i] = d[i] ^ KEY.charCodeAt(i % KEY.length); sum = (sum + raw[i] * (i + 7)) & 255; }
+  if (sum !== d[d.length - 1]) throw new Error("bad");
+  return JSON.parse(new TextDecoder().decode(raw));
+}
+function cardUrl(P) { return location.origin + location.pathname + "#c=" + encodeCard(P); }
+
+/* ===================== settings (main menu, top left) ===================== */
+const CFG = Object.assign({music: true, narration: true, sfx: true, lang: "hu"}, ls("cfg") || {});
+const saveCFG = () => ls("cfg", CFG);
+function settingsModal() {
+  const inGame = !!$("#scene");
+  const row = (k, title) => `<label class="tg"><b>${title}</b><input type="checkbox" data-k="${k}" ${CFG[k] ? "checked" : ""}></label>`;
+  modal(`<h2>Beállítások</h2>
+    ${row("music", "Zene")}${row("narration", "Narráció")}${row("sfx", "Hangjelzések")}
+    <label class="tg"><b>Nyelv</b><select class="langsel"><option value="hu" selected>Magyar</option><option value="en" disabled>English (hamarosan)</option></select></label>
+    ${inGame ? `<button class="btn ghost" id="quit" style="margin-top:18px;color:#f19a92;border-color:#f19a9255">${icon("exit", "inl")} Kilépés: feladom a játékot</button>` : ""}`);
+  document.querySelectorAll("#modal [data-k]").forEach(e => e.onchange = () => {
+    CFG[e.dataset.k] = e.checked; saveCFG(); if (!CFG.narration && window.speechSynthesis) speechSynthesis.cancel();
+    if (e.dataset.k === "music" && $("#cover")) introMusic(CFG.music);
+    if (e.dataset.k === "music" && inGame && P.p === 0) { if (!CFG.music) { stopMusic(); AU.mode = null; } else { ensureAudio(); if (AU.drone) AU.drone.gain.value = .05; startMusic(S); } }
+  });
+  if ($("#quit")) $("#quit").onclick = () => {
+    modal(`<h2>Feladod?</h2><p>A játék a te telefonodon véget ér, és visszakerülsz a főmenübe.</p>
+    <button class="btn" id="quitok" style="background:#c0392b;color:#fff">Igen, feladom</button><button class="btn ghost" onclick="closeModal()">Mégse, játszom tovább</button>`);
+    $("#quitok").onclick = () => { stopMusic(); stopNarration(); location.hash = ""; location.reload(); };
+  };
+}
+
+/* ===================== audio (host phone only) ===================== */
+const AU = {ctx: null, master: null, music: null, tension: null, nodes: [], muted: false, lastTick: -1, mode: ""};
+function ensureAudio() {
+  try {
+    if (!AU.ctx) {
+      AU.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      AU.master = AU.ctx.createGain(); AU.master.gain.value = .9; AU.master.connect(AU.ctx.destination);
+    }
+    if (AU.ctx.state === "suspended") AU.ctx.resume();
+    if (window.speechSynthesis && !AU.warm) { AU.warm = 1; const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); }
+  } catch (e) {}
+}
+function tone(freq, dur, type = "sine", vol = .2, when = 0) {
+  if (!AU.ctx || AU.muted) return;
+  const t = AU.ctx.currentTime + when, o = AU.ctx.createOscillator(), g = AU.ctx.createGain();
+  o.type = type; o.frequency.value = freq; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g); g.connect(AU.master); o.start(t); o.stop(t + dur + .05);
+}
+function noise(dur, vol = .2, hp = 2000, when = 0) {
+  if (!AU.ctx || AU.muted) return;
+  const t = AU.ctx.currentTime + when, len = Math.max(1, AU.ctx.sampleRate * dur), b = AU.ctx.createBuffer(1, len, AU.ctx.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const s = AU.ctx.createBufferSource(), f = AU.ctx.createBiquadFilter(), g = AU.ctx.createGain();
+  f.type = "highpass"; f.frequency.value = hp; g.gain.value = vol; s.buffer = b; s.connect(f); f.connect(g); g.connect(AU.master); s.start(t);
+}
+const tick = loud => { if (!CFG.sfx) return; noise(.03, .25 + loud * .5, 3500); tone(1800, .03, "square", .04 + loud * .08); };
+const chime = () => { if (!CFG.sfx) return; tone(880, .9, "sine", .16); tone(1320, 1.1, "sine", .1, .12); };
+const drumroll = sec => { if (!CFG.sfx) return; for (let i = 0; i < sec * 18; i++) noise(.05, .12 + i / (sec * 18) * .25, 300, i / 18); tone(110, 1.2, "triangle", .35, sec); };
+// Placeholder music: a story file assets/<id>/music.mp3 (and tension.mp3) wins when it exists, else a generated drone.
+function startMusic(story) {
+  if (AU.mode || !CFG.music) return; AU.mode = "calm";
+  // music runs through the whole game (Márk 2026-10-18): take over the intro track if it is still playing
+  if (IMUS.a) { AU.music = IMUS.a; IMUS.a = null; return; }
+  const play = (src, fail) => { const a = new Audio(src); a.loop = true; a.volume = .3; a.play().then(() => { AU.music = a; }).catch(fail); };
+  play(`assets/${story.id}/music.mp3`, () => play("assets/music_intro.mp3", () => drone()));
+}
+function drone() {
+  if (!AU.ctx) return;
+  const g = AU.ctx.createGain(); g.gain.value = .05; const lp = AU.ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 500;
+  [55, 55.4, 82.4].forEach(f => { const o = AU.ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = f; o.connect(lp); o.start(); AU.nodes.push(o); });
+  const lfo = AU.ctx.createOscillator(), lg = AU.ctx.createGain(); lfo.frequency.value = .08; lg.gain.value = 250; lfo.connect(lg); lg.connect(lp.frequency); lfo.start();
+  lp.connect(g); g.connect(AU.master); AU.drone = g;
+}
+function tensionOn(story) {
+  if (AU.mode === "tension" || !CFG.music) return; AU.mode = "tension";
+  const a = new Audio(`assets/${story.id}/tension.mp3`); a.loop = true; a.volume = .5;
+  a.play().then(() => { if (AU.music) AU.music.pause(); AU.tension = a; }).catch(() => {
+    if (AU.drone) AU.drone.gain.value = .08;
+    AU.pulse = setInterval(() => { tone(55, .35, "sine", .5); tone(110, .12, "triangle", .12); }, 750);
+  });
+}
+function stopMusic() {
+  [AU.music, AU.tension].forEach(a => a && a.pause()); clearInterval(AU.pulse);
+  AU.nodes.forEach(o => { try { o.stop(); } catch (e) {} }); AU.nodes = []; if (AU.drone) AU.drone.gain.value = 0; AU.mode = "done";
+}
+/* ---------- narration: typewriter text + voice + scream at the murder (Márk 2026-10-18) ---------- */
+// story text markup: **key fact** = bold+underline, [SIKOLY] = scream moment
+function storyParts(story) {
+  const raw = story.story || story.intro;
+  return raw.split("[SIKOLY]").map(p => {
+    const tok = []; p.split(/(\*\*[^*]+\*\*)/).forEach(t => { if (!t) return; const b = t.startsWith("**"); tok.push({t: b ? t.slice(2, -2) : t, b}); });
+    return tok;
+  });
+}
+const plainOf = tok => tok.map(x => x.t).join("");
+function tokHTML(tok, k) {
+  let h = "", n = 0;
+  for (const x of tok) { if (n >= k) break; const s = x.t.slice(0, k - n); n += s.length; h += x.b ? `<b class="key">${esc(s)}</b>` : esc(s); }
+  return h;
+}
+const NARR = {gen: 0};
+// iOS only lets an audio element play later from a timer if it was started once inside a tap: unlock the scream on the tap that opens the story
+const SCREAM = {a: null};
+function silentWav() {   // 0.05 s of silence, 8 kHz 8-bit mono
+  const n = 400, b = new Uint8Array(44 + n), v = new DataView(b.buffer), w = (o, t) => [...t].forEach((c, i) => b[o + i] = c.charCodeAt(0));
+  w(0, "RIFF"); v.setUint32(4, 36 + n, true); w(8, "WAVEfmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, "data"); v.setUint32(40, n, true); b.fill(128, 44);
+  return "data:audio/wav;base64," + btoa(String.fromCharCode(...b));
+}
+function unlockScream() {
+  if (SCREAM.a) return;
+  const a = new Audio(silentWav()); SCREAM.a = a;
+  const swap = () => { a.pause(); a.src = "assets/sfx_scream.mp3"; a.preload = "auto"; a.load(); };
+  a.play().then(swap).catch(swap);
+}
+function stopNarration() { NARR.gen++; if (window.speechSynthesis) speechSynthesis.cancel(); if (NARR.audio) NARR.audio.pause(); }
+// el: container to type into (or null for voice only). Reveals the text progressively in sync with the voice.
+function narrate(story, el, onDone) {
+  stopNarration();
+  const gen = ++NARR.gen, parts = storyParts(story), done = parts.map(() => 0);
+  let fin = false; const finish = () => { if (!fin && gen === NARR.gen) { fin = true; if (onDone) onDone(); } };
+  const voiceOn = CFG.narration && !!window.speechSynthesis;
+  const draw = () => { if (el && gen === NARR.gen) el.innerHTML = parts.map((tok, i) => tokHTML(tok, done[i])).join(done[0] >= plainOf(parts[0]).length && parts.length > 1 ? " " : "") + (done[parts.length - 1] < plainOf(parts[parts.length - 1]).length ? `<span class="caret">▍</span>` : ""); };
+  const box = el && el.closest(".ctext");
+  const typeTo = (i, target) => { done[i] = Math.max(done[i], Math.min(target, plainOf(parts[i]).length)); draw(); if (box) box.scrollTop = box.scrollHeight; };
+  // ~5 s drawn-out scream; the music ducks under it, the story goes on once it fades
+  const scream = () => { if (CFG.sfx || CFG.narration) { const a = SCREAM.a || new Audio("assets/sfx_scream.mp3"); a.currentTime = 0; a.volume = 1; a.play().catch(() => {});
+    const m = IMUS.a || AU.music; if (m) { const v = m.volume; m.volume = v * .25; setTimeout(() => { if (m.volume < v) m.volume = v; }, 4600); } } };
+  const runPart = i => {
+    if (gen !== NARR.gen || i >= parts.length) return;
+    const text = plainOf(parts[i]);
+    let timer = setInterval(() => { if (gen !== NARR.gen) return clearInterval(timer); typeTo(i, done[i] + 1); if (!voiceOn && done[i] >= text.length) { clearInterval(timer); next(); } }, voiceOn ? 62 : 45);
+    const next = () => { clearInterval(timer); typeTo(i, text.length); if (i < parts.length - 1) { scream(); setTimeout(() => runPart(i + 1), 4300); } else finish(); };
+    if (voiceOn) {
+      const u = new SpeechSynthesisUtterance(text); u.lang = "hu-HU"; u.rate = .95;
+      const v = speechSynthesis.getVoices().find(v => /^hu/i.test(v.lang)); if (v) u.voice = v;
+      u.onboundary = e => typeTo(i, e.charIndex + (e.charLength || 1));
+      u.onend = () => { if (gen === NARR.gen) next(); };
+      u.onerror = () => { if (gen === NARR.gen) next(); };
+      speechSynthesis.speak(u);
+    }
+  };
+  if (el) { el.onclick = () => { parts.forEach((p, i) => done[i] = plainOf(p).length); draw(); finish(); }; draw(); }
+  runPart(0);
+}
+
+/* ===================== main menu: catalog -> cover + narration -> settings (host) ===================== */
+const L = Object.assign({mode: 30, players: 4}, ls("lobby") || {});
+const saveL = () => ls("lobby", L);
+function coverSrc(s) { return `assets/${s.id}/cover.jpg`; }
+function coverFallback(s) {
+  const hue = (parseInt(s.id.slice(1)) * 37) % 360;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'><defs><radialGradient id='g' cx='50%' cy='40%' r='75%'><stop offset='0' stop-color='hsl(${hue},35%,32%)'/><stop offset='1' stop-color='#0d0b10'/></radialGradient></defs><rect width='400' height='400' fill='url(#g)'/><path d='M200 130v150M160 175h80' stroke='#d9b46a' stroke-opacity='.35' stroke-width='14' stroke-linecap='round'/></svg>`;
+  return "data:image/svg+xml," + encodeURIComponent(svg).replace(/'/g, "%27");
+}
+async function lobby() {
+  stopNarration();
+  app.innerHTML = `<div class="center" style="padding-top:30vh"><p class="muted">Betöltés...</p></div>`;
+  await apiLibrary();
+  let h = `<div class="row" style="align-items:center;gap:12px;margin-top:4px"><button class="hbtn" id="setb" title="Beállítások" style="flex:0 0 auto;width:46px;height:46px;font-size:1.3rem">${icon("gear")}</button><h1 style="margin:0;flex:1">Éjféli Tanú</h1></div><p class="muted">Válassz egy rejtélyt. Koppints rá, és hallgassátok meg a történetet.</p><div class="cat">`;
+  if (!LIB.logged) h = h.replace('<div class="cat">', `<div class="panel" style="margin:6px 0 12px"><b>Jelentkezz be</b> azzal a fiókkal, amivel a játékot megrendelted. <a class="btn" style="margin-top:10px" href="${SHOP}/fiokom/?et_return=1">Belépés</a></div><div class="cat">`);
+  else if (!LIB.owned.length) h = h.replace('<div class="cat">', `<div class="panel" style="margin:6px 0 12px">Még nincs játékod. Az első rejtélyt mi álljuk: <a href="${STORIES[0].url}">Méreg Camelotban, ingyen</a>.</div><div class="cat">`);
+  STORIES.forEach(s => { const own = LIB.owned.includes(s.id); h += `<div class="tile${own ? "" : " locked"}" data-st="${s.id}"><img src="${coverSrc(s)}" onerror="this.onerror=null;this.src='${coverFallback(s)}'" alt="">
+    <div class="tt"><b>${esc(s.title)}</b>${own ? "" : `<small style="display:block;opacity:.8">${icon("lock", "inl")} Megnézem a boltban</small>`}</div></div>`; });
+  app.innerHTML = h + `</div>`;
+  app.querySelectorAll(".tile").forEach(e => e.onclick = () => {
+    if (!LIB.owned.includes(e.dataset.st)) { location.href = STORIES.find(x => x.id === e.dataset.st).url; return; }
+    coverView(e.dataset.st, e.getBoundingClientRect());
+  });
+  $("#setb").onclick = settingsModal;
+}
+// crime music under the opening narration and the setup dials (Pixabay, Márk 2026-10-18)
+const IMUS = {a: null};
+function introMusic(on) {
+  if (on) {
+    if (IMUS.a || !CFG.music) return;
+    const a = new Audio("assets/music_intro.mp3"); a.loop = true; a.volume = 0; IMUS.a = a;
+    a.play().then(() => { let v = 0; const t = setInterval(() => { if (IMUS.a !== a) return clearInterval(t); v = Math.min(.28, v + .02); a.volume = v; if (v >= .28) clearInterval(t); }, 80); }).catch(() => { IMUS.a = null; });
+  } else if (IMUS.a) {
+    const a = IMUS.a; IMUS.a = null;
+    const t = setInterval(() => { a.volume = Math.max(0, a.volume - .03); if (a.volume <= 0) { clearInterval(t); a.pause(); } }, 60);
+  }
+}
+async function coverView(id, rect) {
+  let s;
+  try { s = await apiStory(id); } catch (e) { location.href = e.status === 401 ? `${SHOP}/fiokom/?et_return=1` : STORIES.find(x => x.id === id).url; return; }
+  ensureAudio();
+  const el = document.createElement("div"); el.id = "cover"; el.className = "cover";
+  el.style.transformOrigin = rect ? `${rect.left + rect.width / 2}px ${rect.top + rect.height / 2}px` : "50% 50%";
+  el.innerHTML = `<div class="bg" id="cbg"></div><div class="bg2" id="cbg2"></div><div class="cin">
+    <div class="ctext"><h1>${esc(s.title)}</h1><p class="muted small">${esc(s.world)}</p><p class="storytxt" id="ctyped"></p>
+      <button class="btn cstart" id="cstart">Játék kezdése</button></div>
+    <button class="btn ghost" id="cother" style="opacity:.6;color:#c9c4bc;border-color:#ffffff33;margin:8px 0 0">Másik történetet választok</button></div>`;
+  document.body.appendChild(el);
+  const bg = new Image(); bg.onload = () => { $("#cbg").style.backgroundImage = `url(${bg.src})`; };
+  bg.onerror = () => { $("#cbg").style.backgroundImage = `url(${coverFallback(s)})`; }; bg.src = coverSrc(s);
+  // Start button appears only once the narration has finished (Márk 2026-10-18)
+  introMusic(true); unlockScream();
+  // start button lives at the end of the text box; it fades in and the box glides down to it
+  narrate(s, $("#ctyped"), () => { const b = $("#cstart"), box = $(".ctext"); if (!b) return; b.classList.add("show"); setTimeout(() => box.scrollTo({top: box.scrollHeight, behavior: "smooth"}), 60); });
+  $("#cother").onclick = () => { stopNarration(); introMusic(false); el.remove(); };
+  $("#cstart").onclick = () => settingsView(s);
+}
+function settingsView(s) {
+  // Márk 2026-10-18: the story fades out, we cross into the crime scene; left half-dial = time, right half-dial = players,
+  // dragged up/down like a speedometer, the value in the middle is the chosen one; a band joins them through the start button.
+  const cov = $("#cover"); if (!cov || cov.classList.contains("setup")) return;
+  const bg2 = $("#cbg2"), sc = new Image();
+  sc.onload = () => { bg2.style.backgroundImage = `url(${sc.src})`; };
+  sc.onerror = () => { bg2.style.backgroundImage = `url(${coverSrc(s)})`; }; sc.src = `assets/${s.id}/scene.jpg`;
+  const st = document.createElement("div"); st.className = "setup-st"; cov.insertBefore(st, cov.querySelector(".cin"));
+  requestAnimationFrame(() => cov.classList.add("setup"));
+  const dials = [
+    {side: "l", cap: "Időkeret", vals: [15, 30, 60], unit: "perc", key: "mode"},
+    {side: "r", cap: "Játékosok", vals: [4, 5, 6], unit: "fő", key: "players"}];
+  const STEP = 36 * Math.PI / 180;
+  dials.forEach(d => {
+    d.pos = Math.max(0, d.vals.indexOf(L[d.key]));
+    d.el = document.createElement("div"); d.el.className = "dial " + d.side;
+    let ticks = ""; for (let k = 0; k < 40; k++) { const big = k % 4 === 0; ticks += `<line x1="${big ? 87 : 91}" y1="0" x2="97" y2="0" stroke="${big ? "#d9b46a" : "#d9b46a77"}" stroke-width="${big ? 1.2 : .7}" transform="rotate(${k * 9})"/>`; }
+    d.el.innerHTML = `<svg viewBox="-100 -100 200 200"${d.side === "r" ? ' style="transform:scaleX(-1)"' : ""}><circle r="98" fill="none" stroke="#d9b46a99" stroke-width=".8"/><circle r="84" fill="none" stroke="#d9b46a33" stroke-width=".6"/><g class="tk">${ticks}</g></svg>`;
+    st.appendChild(d.el);
+    d.labels = d.vals.map((v, i) => { const e = document.createElement("div"); e.className = "val"; e.innerHTML = `${v}<small>${d.unit}</small>`; e.onclick = ev => { ev.stopPropagation(); snap(d, i); }; st.appendChild(e); return e; });
+    d.capEl = document.createElement("div"); d.capEl.className = "cap"; d.capEl.textContent = d.cap; st.appendChild(d.capEl);
+  });
+  const band = document.createElement("div"); band.className = "band"; st.appendChild(band);
+  const go = document.createElement("button"); go.className = "go"; go.id = "solve"; go.innerHTML = "Játék<br>indítása"; st.appendChild(go);
+  let G = {};
+  const layout = () => {
+    const W = st.clientWidth, H = st.clientHeight, top = 80, bot = H - 96;
+    const cy = (top + bot) / 2, R = Math.min((bot - top) * .46, 210, W * .62), vis = Math.min(W * .3, 170);
+    G = {W, H, cy, R, cxL: vis - R, cxR: W - vis + R};
+    dials.forEach(d => { const cx = d.side === "l" ? G.cxL : G.cxR; Object.assign(d.el.style, {left: cx - R + "px", top: cy - R + "px", width: 2 * R + "px", height: 2 * R + "px"});
+      d.capEl.style.left = (d.side === "l" ? vis * .5 : W - vis * .5) + "px"; d.capEl.style.top = Math.max(top - 30, cy - R - 26) + "px"; draw(d); });
+    band.style.top = cy - 1 + "px"; Object.assign(go.style, {left: W / 2 + "px", top: cy + "px"});
+  };
+  const draw = d => {
+    const r = G.R - 54, sgn = d.side === "l" ? 1 : -1, cx = d.side === "l" ? G.cxL : G.cxR;
+    d.labels.forEach((e, i) => { const a = (i - d.pos) * STEP; e.style.left = cx + sgn * r * Math.cos(a) + "px"; e.style.top = G.cy + r * Math.sin(a) + "px";
+      e.style.visibility = Math.abs(a) > 1.4 ? "hidden" : ""; e.classList.toggle("on", Math.round(d.pos) === i); });
+    d.el.querySelector(".tk").setAttribute("transform", `rotate(${-d.pos * 36})`);
+  };
+  const snap = (d, i) => {
+    i = Math.max(0, Math.min(d.vals.length - 1, i)); const from = d.pos, t0 = performance.now();
+    if (L[d.key] !== d.vals[i]) { L[d.key] = d.vals[i]; saveL(); if (navigator.vibrate) navigator.vibrate(8); }
+    const step = now => { const k = Math.min(1, (now - t0) / 260), e = 1 - Math.pow(1 - k, 3); d.pos = from + (i - from) * e; draw(d); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  };
+  // drag anywhere on a screen half rotates that dial (pull up / down)
+  let drag = null;
+  st.onpointerdown = e => { if (e.target === go) return; const d = dials[e.clientX < G.W / 2 ? 0 : 1]; drag = {d, y: e.clientY, p: d.pos, moved: false}; st.setPointerCapture(e.pointerId); };
+  st.onpointermove = e => { if (!drag) return; const dy = e.clientY - drag.y; if (Math.abs(dy) > 4) drag.moved = true;
+    const d = drag.d, n = d.vals.length - 1; let p = drag.p - dy / ((G.R - 46) * STEP);
+    if (p < 0) p = p * .3; if (p > n) p = n + (p - n) * .3; // rubber band at the ends
+    d.pos = p; draw(d); const r = Math.round(Math.max(0, Math.min(n, p))); if (L[d.key] !== d.vals[r]) { L[d.key] = d.vals[r]; saveL(); if (navigator.vibrate) navigator.vibrate(8); } };
+  st.onpointerup = st.onpointercancel = () => { if (!drag) return; const d = drag.d; drag = null; snap(d, Math.round(d.pos)); };
+  layout(); addEventListener("resize", layout);
+  setTimeout(() => st.classList.add("in"), 350);
+  $("#solve").onclick = () => {
+    stopNarration();
+    const n = L.players, pick = [...(s.cast ? s.cast[n] : Array(n).keys())];
+    for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pick[i], pick[j]] = [pick[j], pick[i]]; }
+    const x = +(new URLSearchParams(location.search).get("x") || 1);
+    const g = Math.random().toString(36).slice(2, 10);
+    const base = {v: 4, s: s.id, m: L.mode, n, ch: pick, t0: Date.now(), g, x, k: TOK[s.id]};
+    removeEventListener("resize", layout); $("#cover").remove(); // the intro music keeps playing into the game
+    deal(base, 1);
+  };
+}
+function deal(base, i) {
+  const n = base.n;
+  if (i >= n) {
+    // the host starts everyone: 1 minute intro on every phone, then the clock
+    const start = Date.now() + 1500;
+    ls("st-" + base.t0 + "-0", {userStep: 0, tipSeen: {}, start, obs: []});
+    fetch(`https://ntfy.sh/ejfeli-tanu-${base.g}`, {method: "POST", body: JSON.stringify({start}), keepalive: true}).catch(() => {});
+    // switch to the game without a reload, so the music keeps playing (a hash change would reload the page)
+    const code = encodeCard({...base, p: 0}); history.pushState(null, "", "#c=" + code); startGame(code); return;
+  }
+  app.innerHTML = `<h2 class="center" style="margin-top:4vh">${i + 1}. játékos</h2><p class="center muted">Olvasd be a telefonoddal. Csak a saját kódodat nézd!</p>
+    <div class="center"><div class="qrbox" id="qr"></div></div>
+    <p class="center small muted">${i}/${n - 1}</p>
+    <button class="btn" id="next">${i < n - 1 ? "Következő játékos" : "Mindenki beolvasta: indulás!"}</button>
+    <button class="btn ghost" id="back">Vissza</button>`;
+  new QRCode($("#qr"), {text: cardUrl({...base, p: i}), width: 240, height: 240, correctLevel: QRCode.CorrectLevel.L});
+  $("#next").onclick = () => deal(base, i + 1);
+  $("#back").onclick = () => i > 1 ? deal(base, i - 1) : lobby();
+}
+
+/* ===================== game (every phone) ===================== */
+let P, S, ME, SLOT, NOW = () => Date.now();
+// v3 texts (Márk 2026-10-18): only characters in play may be named, roles depend on the player count.
+// {_n: {"4": a, "6": b}} = by player count (largest key <= n), {_alt: [{t, r}]} = first option whose named slots are all in play
+const ROLE_NAME = {N: "ÁRTATLAN", S: "SZEMTANÚ", G: "GYILKOS", B: "BŰNTÁRS"};
+function resolveStory(raw, cast) {
+  const n = cast.length, inCast = r => r.every(x => cast.includes(x));
+  const R = v => {
+    if (Array.isArray(v)) return v.map(R);
+    if (!v || typeof v !== "object") return v;
+    if (v._n) { const ks = Object.keys(v._n).map(Number).sort((a, b) => a - b); const k = ks.filter(x => x <= n).pop() ?? ks[0]; return R(v._n[k]); }
+    if (v._alt) return (v._alt.find(o => inCast(o.r)) || v._alt[v._alt.length - 1]).t;
+    if ("to" in v && "t" in v) return v;
+    const o = {}; for (const k in v) o[k] = R(v[k]); return o;
+  };
+  const S2 = R(raw);
+  S2.chars.forEach(c => c.roleName = ROLE_NAME[c.role]);
+  return S2;
+}
+const ST = {userStep: 0, key: "", tipSeen: {}, start: 0};
+const lab = j => S.chars[P.ch[j]].name;
+// The host starts the game for everyone ("Mindenki beolvasta: indulás!"); the start moment reaches the other
+// phones through a tiny public pub/sub topic (ntfy.sh, random topic per game). Offline phones get a manual start button.
+const SYNC = {es: null, msgs: []};  // msgs: votes / witness guess / skip, with the ntfy server time
+function syncTopic() { return `ejfeli-tanu-${P.g || P.t0}`; }
+function syncListen() {
+  try {
+    SYNC.es = new EventSource(`https://ntfy.sh/${syncTopic()}/sse?since=all`);
+    SYNC.es.onmessage = ev => {
+      try {
+        const d = JSON.parse(ev.data), m = JSON.parse(d.message || "{}");
+        if (m.start && (!ST.start || m.start < ST.start)) { ST.start = m.start; saveST(); ST.key = ""; loop(); }
+        if ((m.v || m.g || m.s || m.l) && !SYNC.msgs.some(x => x.id === d.id)) SYNC.msgs.push({id: d.id, t: d.time * 1000, m});
+      } catch (e) {}
+    };
+  } catch (e) {}
+}
+function syncPost(obj) { fetch(`https://ntfy.sh/${syncTopic()}`, {method: "POST", body: JSON.stringify(obj), keepalive: true}).catch(() => {}); }
+function syncSend(start) { fetch(`https://ntfy.sh/${syncTopic()}`, {method: "POST", body: JSON.stringify({start}), keepalive: true}).catch(() => {}); }
+const INTRO = 60;  // everyone gets the same 1 minute for the 3 intro steps, then the clock starts together
+function TL() {
+  if (!ST.start) return {ph: "wait"};
+  let e = (NOW() - ST.start) / 1000 * P.x;
+  if (e < 0) return {ph: "wait", left: -e};
+  if (e < INTRO) return {ph: "intro", left: INTRO - e};
+  e -= INTRO;
+  const D = P.m * 60, T = TIPS_AT[P.m];
+  for (let i = 0; i < T.length; i++) {
+    const st = (D - T[i]) + TIP * i;
+    if (e < st) return {ph: "play", rem: D - (e - TIP * i)};
+    if (e < st + TIP) return {ph: "tip", i, rem: T[i], left: st + TIP - e};
+  }
+  const rem = D - (e - TIP * T.length);
+  return rem > 0 ? {ph: "play", rem} : {ph: "end"};
+}
+async function startGame(hash) {
+  try { P = decodeCard(hash); } catch (e) { app.innerHTML = `<h2>Hibás kód</h2><p>Olvasd be újra a QR-kódot.</p>`; return; }
+  let raw;
+  try { raw = await apiStory(P.s, P.k); } catch (e) {
+    app.innerHTML = `<div class="center" style="padding-top:20vh"><h2>Lejárt a játék linkje</h2><p>A meghívó 24 óráig érvényes. Kérd meg a házigazdát, hogy indítson új játékot, és olvasd be újra a QR-kódot.</p></div>`; return;
+  }
+  if (typeof P.n === "number") P.n = Array.from({length: P.n}, (_, i) => `${i + 1}. játékos`);
+  S = resolveStory(raw, P.ch); SLOT = P.ch[P.p]; ME = S.chars[SLOT];
+  const saved = ls("st-" + P.t0 + "-" + P.p); if (saved) Object.assign(ST, saved);
+  ST.obs = ST.obs || [];
+  ST.key = "";
+  if ("wakeLock" in navigator) { const wl = () => navigator.wakeLock.request("screen").catch(() => {}); wl(); document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && wl()); }
+  document.addEventListener("click", () => P.p === 0 && ensureAudio(), {capture: true});
+  syncListen();
+  if (P.p === 0 && ST.start) syncSend(ST.start);  // the host re-announces the start (the first send may be cut by the page switch)
+  setInterval(loop, 200); loop();
+}
+const saveST = () => ls("st-" + P.t0 + "-" + P.p, {userStep: ST.userStep, tipSeen: ST.tipSeen, start: ST.start, obs: ST.obs});
+function loop() {
+  const t = TL();
+  let key = t.ph === "wait" ? "wait" : t.ph === "intro" ? "read" + Math.min(ST.userStep, 3) : t.ph === "end" ? "end" : "scene";
+  if (t.ph === "tip") key += "tip" + t.i;
+  if (key !== ST.key) { ST.key = key; render(t); }
+  update(t);
+}
+function render(t) {
+  closeModal();
+  if (t.ph === "wait") return waitView();
+  if (t.ph === "intro") return readView(ST.userStep);
+  if (t.ph === "end") return ls("vote-" + P.t0) ? voteFlow() : endView();
+  sceneView(t);
+  if (t.ph === "tip") tipView(t.i);
+}
+function update(t) {
+  if (t.ph === "end") { if (ls("vote-" + P.t0)) return; return voteTick(); }
+  if (t.ph === "intro") { const b = $("#ibar"); if (b) { b.style.width = (100 * t.left / INTRO) + "%"; b.parentNode.classList.toggle("low", t.left <= 10); } }
+  if (t.ph === "play" || t.ph === "tip") {
+    const D = P.m * 60, rem = t.rem;
+    drawClock(rem / D, t.ph === "tip", t.ph === "play" && rem <= 60, rem);
+    if (P.p === 0 && t.ph === "play") {
+      if (rem <= 180) tensionOn(S);
+      if (rem <= 60) { const s = Math.ceil(rem * (rem <= 10 ? 2 : 1)); if (s !== AU.lastTick) { AU.lastTick = s; tick(1 - rem / 60); } }
+    }
+  }
+  if (t.ph === "tip") { const b = $("#tbar"); if (b) { b.style.width = (100 * t.left / TIP) + "%"; b.parentNode.classList.toggle("low", t.left <= 10); } }
+}
+function waitView() {
+  app.innerHTML = `<div class="center" style="padding-top:12vh"><h1>${esc(S.title)}</h1>
+    <div class="panel"><p>Várjuk, hogy mindenki beolvassa a kódját.</p><p class="small muted">Amikor a játékvezető elindítja, minden telefonon egyszerre jön a saját karaktered, utána közösen indul az óra.</p></div>
+    <button class="btn ghost" id="manual" style="display:none">Nem indul? Indítás kézzel</button></div>`;
+  setTimeout(() => { const b = $("#manual"); if (b) b.style.display = "block"; }, 20000);
+  $("#manual").onclick = () => { ST.start = Date.now(); saveST(); ST.key = ""; loop(); };
+}
+
+/* ---------- own introduction in 3 steps: 1 minute for everyone, then the clock starts together ---------- */
+function readHead(step) {
+  const names = ["Ki vagy", "Amit tudsz", "Személyes titok"];
+  return `<div class="topbar"><div class="steps">${names.map((s, i) => i === step ? `<b>${s}</b>` : `<span>${s}</span>`).join("")}</div>
+    <div class="bar" style="margin-top:8px" title="A nyomozás indulásáig"><i id="ibar" style="width:100%"></i></div></div>`;
+}
+function myRole() {
+  return `<div class="panel"><div class="kv"><b>Mi történt veled</b>${esc(ME.roleText)}</div><div class="kv"><b>Hogyan nyersz</b>${esc(ME.win)}</div></div>`;
+}
+// order requested by Márk, unnumbered: public -> appearance -> where -> victim -> observations (incl. the 30 s observations received)
+function myCard(skipPublic) {
+  const obs = (ST.obs || []).map(o => o.lie !== undefined
+    ? `<li><span class="muted">Választott hazugság (${o.n}. kör):</span> „${esc(o.lie)}”</li>`
+    : o.lies ? `<li><span class="muted">${o.n}. kör:</span> nem választottál hazugságot.</li>`
+    : `<li><span class="muted">${o.n}. megfigyelés:</span> „${esc(o.text)}”</li>`).join("");
+  // only the murderer and the accomplice get to prepare their story about how they look (Márk 2026-10-18);
+  // the others should be caught off guard when somebody points at their sleeve
+  const evil = ME.role === "G" || ME.role === "B";
+  return `<div class="panel">
+    ${skipPublic ? "" : `<div class="kv"><b>Ezt mindenki tudja rólad</b>${esc(ME.dispute)} ${esc(ME.weapon)}</div>`}
+    ${evil ? `<div class="kv"><b>A megjelenéseden látszik</b>${esc(ME.traits.join(", "))}. Ha rákérdeznek, legyen kész rá a magyarázatod!</div>` : ""}
+    <div class="kv"><b>Hol voltál a gyilkosság idején</b>${esc(ME.hol)}${ME.miert ? `<br><span class="muted">Miért:</span> ${esc(ME.miert)}` : ""}${ME.kivel ? `<br><span class="muted">Kivel:</span> ${esc(ME.kivel)}` : ""}</div>
+    <div class="kv"><b>A kapcsolatod az áldozattal</b>${ME.rel ? esc(ME.rel) + " " : ""}<span class="muted">A titkos okod:</span> ${esc(ME.motive)}</div>
+    <div class="kv"><b>Megfigyeléseid</b>${esc(ME.seen || "")}${obs ? `<ul style="margin:6px 0 0;padding-left:18px">${obs}</ul>` : ""}</div></div>`;
+}
+function readView(step) {
+  let h = readHead(Math.min(step, 2));
+  if (step === 0) {
+    h += `<div class="row" style="align-items:flex-start;gap:14px;margin-top:8px">${pimg(S, SLOT, {cls: "pfp"})}<div style="flex:2"><h2 style="margin:0">${esc(ME.name)}</h2><p class="muted small">${esc(ME.title)}</p>
+      <div class="role ${ME.role}">${ME.roleName}</div></div></div>${myRole()}`;
+  } else if (step === 1) {
+    h += `<h2>Te és ${esc(S.victim.split(",")[0])}</h2>${myCard()}
+      <p class="small muted">A játék alatt időnként 30 másodpercre új megfigyelést kapsz, utána az nyilvános lesz: mindenki látja a karaktered lapján. A lapodat a játék alatt is megnézheted: koppints a saját képedre.</p>`;
+  } else if (step === 2) {
+    h += `<p class="badge gold" style="margin-top:6px">Csak neked</p><h2>Személyes titok</h2><div class="panel" style="font-size:1.12rem">${esc(ME.secret)}</div>
+      <p class="small muted">A saját kis ármánykodásod a történetben. Nem ér pontot, de ebből lesznek a jó viták: őrizd, használd ki, vagy fordítsd a többiek ellen.</p>`;
+  } else {
+    h += `<div class="center" style="padding-top:8vh"><h2>Kész vagy!</h2><p class="muted">Amint lejár a közös 1 perc, mindenkinél egyszerre indul az óra.</p></div>`;
+  }
+  app.innerHTML = h + (step < 3 ? `<button class="btn" id="nx">${step < 2 ? "Tovább" : "Kész"}</button>` : "");
+  if ($("#nx")) $("#nx").onclick = () => { ensureAudio(); ST.userStep = step + 1; saveST(); ST.key = ""; loop(); };
+  window.scrollTo(0, 0);
+}
+
+/* ---------- suspicion slider next to each portrait (Márk 2026-10-18), own icon set ---------- */
+// Márk 2026-10-18: one slider per portrait, top to bottom: innocent (green hand), witness (blue eye), unknown (grey ?),
+// accomplice (orange handshake, only when one is in play), murderer (red knife). Own portrait: just your role.
+// A tray at the bottom shows every role in play; each mark you hand out (and your own role) greys one out.
+const MARK = {N: {col: "#4caf7a", ic: "ok"}, S: {col: "#5b9bd5", ic: "eye"}, Q: {col: "#8a8590", ic: "q"}, B: {col: "#e8913a", ic: "hands"}, G: {col: "#d2554d", ic: "knife"}};
+const roleOfSlot = sl => S.chars[sl].role;
+// only the roles that are in play this game: no witness at 4-5 players, no accomplice at 4
+const susOrder = () => ["N", "S", "Q", "B", "G"].filter(k => k === "Q" || P.ch.some(sl => roleOfSlot(sl) === k));
+function notesKey() { return "notes-" + P.t0 + "-" + P.p; }
+function susOf(slot) { const v = ((ls(notesKey()) || {}).sus || {})[slot]; return susOrder().includes(v) ? v : "Q"; }
+function setSus(slot, k) {
+  const N = ls(notesKey()) || {text: "", sus: {}}; N.sus = N.sus || {};
+  N.sus[slot] = k; ls(notesKey(), N);
+  const el = document.querySelector(`[data-mk="${slot}"]`); if (el) el.outerHTML = markHTML(slot);
+  document.querySelectorAll("#modal [data-sus]").forEach(b => b.classList.toggle("on", b.dataset.sus === k));
+  drawTray();
+}
+const SUSLAB = {N: "Ártatlan", S: "Szemtanú", Q: "Nem tudom", B: "Bűntárs", G: "Gyilkos"};
+// small icon by the name on the scene: your verdict on them, or your own role
+// keeps the icon on the same line as the last word of the name
+function nameWithMark(name, mk) { const w = name.split(" "), last = w.pop(); return (w.length ? esc(w.join(" ")) + " " : "") + `<em class="nw">${esc(last)}${mk}</em>`; }
+function markHTML(slot) { const m = MARK[susOf(slot)]; return `<i class="mk" data-mk="${slot}" style="--c:${m.col}">${icon(m.ic)}</i>`; }
+// verdict picker at the bottom of another player's popup (Márk 2026-10-18: easier than the slider on the scene)
+function susPicker(slot) {
+  const cur = susOf(slot);
+  return `<div class="suspick"><b>Szerinted ő:</b><div class="opts">${susOrder().map(k => `<button data-sus="${k}" class="${k === cur ? "on" : ""}" style="--c:${MARK[k].col}"><i>${icon(MARK[k].ic)}</i><span>${SUSLAB[k]}</span></button>`).join("")}</div></div>`;
+}
+function drawTray() {
+  const t = $("#tray"); if (!t) return;
+  const used = {N: 0, S: 0, B: 0, G: 0};  // your own role is not greyed out: that would show it to anyone looking
+  P.ch.forEach((sl, i) => { if (i !== P.p) { const k = susOf(sl); if (k in used) used[k]++; } });
+  let h = "";
+  ["N", "S", "B", "G"].forEach(k => { const total = P.ch.filter(sl => roleOfSlot(sl) === k).length;
+    for (let i = 0; i < total; i++) h += `<span class="tk ${i < used[k] ? "used" : ""}" style="--c:${MARK[k].col}">${icon(MARK[k].ic)}</span>`; });
+  t.innerHTML = h;
+}
+
+/* ---------- crime scene with clock, map, notebook ---------- */
+// per-story clock skin (Márk 2026-10-18): face, ring, accent and a small ornament that fits the world
+// orn: studs = rivets on the ring, spokes = ship-wheel handles, spikes = gothic points, stars = little stars
+const CLOCK_THEME = {
+  S01: {face: "#efe2c4", ring: "#b8902f", ring2: "#6e5418", ink: "#2b2014", wedge: "#a3282a", orn: "studs", n: 4},
+  S02: {face: "#eadfc8", ring: "#9c7a43", ring2: "#4a3720", ink: "#2a2018", wedge: "#7a1f1f", orn: "studs", n: 12},
+  S03: {face: "#ddd6d0", ring: "#3a3036", ring2: "#a9a9b3", ink: "#1c1418", wedge: "#8b0000", orn: "spikes", n: 12},
+  S04: {face: "#ece4f6", ring: "#3d2b6b", ring2: "#d9b46a", ink: "#24183f", wedge: "#7a3fb8", orn: "stars", n: 8},
+  S05: {face: "#e8d9b5", ring: "#6b4423", ring2: "#c9a64b", ink: "#2b1c0e", wedge: "#9b2d20", orn: "spokes", n: 8},
+  S06: {face: "#f3efe6", ring: "#1d3557", ring2: "#c9a64b", ink: "#14213d", wedge: "#b5332e", orn: "studs", n: 12},
+  S07: {face: "#f4efe3", ring: "#c9a64b", ring2: "#7a5a1e", ink: "#2b2418", wedge: "#9b3a24", orn: "stars", n: 12},
+  S08: {face: "#f2f4f7", ring: "#2b2f36", ring2: "#9aa3ad", ink: "#1b1f24", wedge: "#c0392b", orn: "studs", n: 4},
+  S09: {face: "#ece6da", ring: "#2f4f3a", ring2: "#8b1e2d", ink: "#1e2a21", wedge: "#8b1e2d", orn: "studs", n: 8},
+  S10: {face: "#0f1b2b", ring: "#1f6f8b", ring2: "#5bc0eb", ink: "#d8f3ff", wedge: "#e94f37", orn: "spikes", n: 4}};
+function clockOrnament(T) {
+  let h = "";
+  for (let i = 0; i < T.n; i++) {
+    const a = i * 2 * Math.PI / T.n, sx = Math.sin(a), cy = -Math.cos(a), at = (r) => `${(50 + r * sx).toFixed(2)} ${(50 + r * cy).toFixed(2)}`;
+    if (T.orn === "studs") h += `<circle cx="${50 + 49.5 * sx}" cy="${50 + 49.5 * cy}" r="1.6" fill="${T.ring2}"/>`;
+    else if (T.orn === "spokes") h += `<line x1="${50 + 52 * sx}" y1="${50 + 52 * cy}" x2="${50 + 58 * sx}" y2="${50 + 58 * cy}" stroke="${T.ring}" stroke-width="3.2" stroke-linecap="round"/><circle cx="${50 + 58 * sx}" cy="${50 + 58 * cy}" r="2.2" fill="${T.ring2}"/>`;
+    else if (T.orn === "spikes") { const b = .09; h += `<path d="M${at(57)} L${(50 + 52 * Math.sin(a - b)).toFixed(2)} ${(50 - 52 * Math.cos(a - b)).toFixed(2)} L${(50 + 52 * Math.sin(a + b)).toFixed(2)} ${(50 - 52 * Math.cos(a + b)).toFixed(2)} Z" fill="${T.ring2}"/>`; }
+    else if (T.orn === "stars") { const c = [50 + 49.5 * sx, 50 + 49.5 * cy]; let d = ""; for (let k = 0; k < 10; k++) { const r = k % 2 ? .9 : 2.2, q = k * Math.PI / 5; d += `${k ? "L" : "M"}${(c[0] + r * Math.sin(q)).toFixed(2)} ${(c[1] - r * Math.cos(q)).toFixed(2)}`; } h += `<path d="${d}Z" fill="${T.ring2}"/>`; }
+  }
+  return h;
+}
+function drawClock(frac, paused, urgent, rem) {
+  const el = $("#clock"); if (!el) return;
+  const T = CLOCK_THEME[S && S.id] || CLOCK_THEME.S01;
+  el.setAttribute("viewBox", "-9 -9 118 118");
+  frac = Math.max(0, Math.min(1, frac));
+  const a = frac * 2 * Math.PI, r = 44, x = 50 + r * Math.sin(a), y = 50 - r * Math.cos(a);
+  const wedge = frac >= .999 ? `<circle cx="50" cy="50" r="${r}" fill="${T.wedge}"/>` : frac <= 0 ? "" :
+    `<path d="M50 50 L50 ${50 - r} A${r} ${r} 0 ${a > Math.PI ? 1 : 0} 1 ${x.toFixed(2)} ${y.toFixed(2)} Z" fill="${T.wedge}" fill-opacity=".9"/>`;
+  let ticks = ""; for (let i = 0; i < 60; i++) { const b = i * 6 * Math.PI / 180, l = i % 5 ? 3 : 7; ticks += `<line x1="${50 + 45 * Math.sin(b)}" y1="${50 - 45 * Math.cos(b)}" x2="${50 + (45 - l) * Math.sin(b)}" y2="${50 - (45 - l) * Math.cos(b)}" stroke="${T.ink}" stroke-width="${i % 5 ? .6 : 1.4}"/>`; }
+  // digital readout either side of the pivot (the pivot reads as the colon)
+  let dig = "";
+  if (rem !== undefined) { const t = Math.max(0, Math.ceil(rem)), mm = String(Math.floor(t / 60)).padStart(2, "0"), ss = String(t % 60).padStart(2, "0");
+    const txt = (xx, anchor, v) => `<text x="${xx}" y="51" text-anchor="${anchor}" dominant-baseline="middle" font-family="Inter,sans-serif" font-weight="800" font-size="17" fill="${T.ink}" stroke="${T.face}" stroke-width="3" paint-order="stroke">${v}</text>`;
+    dig = txt(44, "end", mm) + txt(56, "start", ss); }
+  // spokes and spikes stick out behind the ring, studs and stars sit on it
+  const orn = clockOrnament(T), out = T.orn === "spokes" || T.orn === "spikes";
+  el.innerHTML = `${out ? orn : ""}<circle cx="50" cy="50" r="52" fill="${T.ring}"/><circle cx="50" cy="50" r="49.5" fill="none" stroke="${T.ring2}" stroke-width="1.2"/>${out ? "" : orn}
+    <circle cx="50" cy="50" r="47" fill="${T.face}"/>${wedge}${ticks}${dig}
+    <line x1="50" y1="50" x2="${x.toFixed(2)}" y2="${y.toFixed(2)}" stroke="${T.ink}" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="50" cy="50" r="4" fill="${T.ink}"/>${paused ? `<rect x="42" y="66" width="5" height="12" fill="${T.ink}"/><rect x="53" y="66" width="5" height="12" fill="${T.ink}"/>` : ""}`;
+  el.classList.toggle("urgent", !!urgent); el.classList.toggle("paused", !!paused);
+}
+function sceneView(t) {
+  const n = P.n.length, slots = P.ch;
+  let h = `<div id="scene"><div class="bg" id="bg"></div>
+    <div class="hud"><div class="hright"><button class="hbtn" id="setb" title="Beállítások">${icon("gear")}</button></div><svg id="clock" viewBox="0 0 100 100"></svg>
+    <div class="hright"><button class="hbtn" id="mapb" title="Térkép">${icon("map")}</button></div></div>
+    <div class="stage"><div class="victim"><div class="vb">${icon("cross")}</div><span class="vn">${esc(S.victim.split(",")[0])}</span></div>
+    <button class="helpq" id="storyb" title="A történet">${icon("q")}</button>`;
+  const trayHTML = `<div class="tray" id="tray"></div>`;
+  // you sit at the bottom centre with no mark at all (a friend glancing at your screen must not see your role);
+  // the others go round the table, keeping the same seating order (Márk 2026-10-18)
+  slots.forEach((slot, i) => {
+    const k = (i - P.p + n) % n, ang = Math.PI / 2 + k * 2 * Math.PI / n;
+    const c = Math.cos(ang), x = 50 + 38 * Math.sign(c) * Math.sqrt(Math.abs(c)), y = 50 + 39 * Math.sin(ang); // pushed out towards the screen edges
+    h += `<div class="ch ${i === P.p ? "me" : ""}" data-slot="${slot}" style="left:${x}%;top:${y}%"><div class="avw"><div class="av">${pimg(S, slot)}</div></div><span>${i === P.p ? esc(S.chars[slot].name) : nameWithMark(S.chars[slot].name, markHTML(slot))}</span></div>`;
+  });
+  h += `</div>${trayHTML}</div>`;
+  app.innerHTML = h; drawTray();
+  const bg = new Image(); bg.onload = () => { $("#bg").style.backgroundImage = `url(${bg.src})`; $(".victim").classList.add("img"); }; bg.onerror = () => $("#bg").classList.add("none"); bg.src = `assets/${S.id}/scene.jpg`;
+  app.querySelectorAll(".ch").forEach(e => e.onclick = () => charModal(+e.dataset.slot));
+  $("#mapb").onclick = mapModal; $("#storyb").onclick = storyModal; $("#setb").onclick = settingsModal;
+  if (P.p === 0) { ensureAudio(); startMusic(S); }
+}
+function modal(inner, cls = "") {
+  closeModal();
+  const m = document.createElement("div"); m.className = "modal"; m.id = "modal";
+  m.innerHTML = `<div class="box ${cls}"><button class="x" id="mx">${icon("close")}</button>${inner}</div>`;
+  document.body.appendChild(m);
+  $("#mx").onclick = closeModal; m.onclick = e => { if (e.target === m) closeModal(); };
+  return m;
+}
+function closeModal() { const m = $("#modal"); if (m) { if (m.querySelector("#mtyped")) stopNarration(); m.remove(); } }
+function zoomable(html) { return `<div class="zoomwrap" onclick="this.classList.toggle('z')">${html}</div><p class="small muted center">Koppints a nagyításhoz.</p>`; }
+function charModal(slot) {
+  const c = S.chars[slot];
+  modal(`<div class="chead"><div class="av">${pimg(S, slot)}</div><div style="flex:1"><h2 style="margin:0">${esc(c.name)}</h2><p class="muted small" style="margin:2px 0 0">${esc(c.title)}</p></div>
+    <button class="hbtn zoomb" id="zoomb" title="Nagyítás">${icon("zoom")}</button></div>
+    <div class="kv"><b>Mindenki látta</b>${esc(c.dispute)}</div><div class="kv"><b>Mindenki tudja</b>${esc(c.weapon)}</div>${slot === SLOT ? "" : publicObs(slot)}
+    ${slot === SLOT ? `<div class="mine"><div class="row" style="align-items:center"><h3 style="margin:0">${icon("lock", "inl")} Csak neked</h3><div class="role ${ME.role}" style="font-size:1.15rem;text-align:right">${ME.roleName}</div></div>
+      <details><summary>A szereped és hogyan nyersz</summary>${myRole()}</details>
+      <details><summary>Amit tudsz</summary>${myCard(true)}</details>
+      <details><summary>Személyes titok</summary><div class="panel">${esc(ME.secret)}</div></details></div>` : susPicker(slot)}`);
+  $("#zoomb").onclick = () => photoView(S, slot, null, null, true);
+  document.querySelectorAll("#modal [data-sus]").forEach(b => b.onclick = () => setSus(slot, b.dataset.sus));
+}
+// zoomed: open straight in the zoomed-in view (magnifier button, Márk 2026-10-18); a blinking 4-way arrow shows the image can be dragged
+function photoView(story, slot, html, caption, zoomed) {
+  const v = document.createElement("div"); v.className = "photo"; v.id = "photo";
+  v.innerHTML = `<button class="hbtn" id="phx" style="position:absolute;right:12px;top:calc(10px + env(safe-area-inset-top));z-index:4">${icon("close")}</button>
+    <div class="pwrap" id="pwrap">${html || pimg(story, slot, {cls: "pimg"})}</div>${caption ? `<div class="pcap">${caption}</div>` : ""}<p class="phint">Csippents vagy koppints a nagyításhoz</p>`;
+  document.body.appendChild(v);
+  const w = $("#pwrap"), img = w.querySelector("img");
+  const hint = () => { const o = v.querySelector(".movehint"); if (o) o.remove(); const h = document.createElement("div"); h.className = "movehint"; h.innerHTML = icon("move"); v.appendChild(h); };
+  // fx, fy: point of the image (0-1) to bring to the middle of the screen
+  const ph = v.querySelector(".phint"), setHint = z => ph.textContent = z ? "Húzd a képet a mozgatáshoz, koppints a kicsinyítéshez" : "Csippents vagy koppints a nagyításhoz";
+  const zoomTo = (fx, fy) => { w.classList.add("z"); setHint(true); requestAnimationFrame(() => { w.scrollLeft = w.scrollWidth * fx - w.clientWidth / 2; w.scrollTop = w.scrollHeight * fy - w.clientHeight / 2; }); hint(); };
+  w.onclick = e => {
+    if (w.classList.contains("z")) { w.classList.remove("z"); setHint(false); return; }
+    const r = (img || w).getBoundingClientRect(); zoomTo(Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)));
+  };
+  if (zoomed) { const go = () => zoomTo(.5, .35); if (img && !img.complete) img.addEventListener("load", go, {once: true}); else go(); }
+  $("#phx").onclick = () => v.remove();
+}
+function mapModal() {
+  photoView(S, 0, `<img class="pimg" src="assets/${S.id}/map.jpg" onerror="this.onerror=null;this.src='assets/maps/${S.id}.png'">`,
+    `${esc(S.mapNote)}${S.common ? `<br><span style="color:var(--gold2)">${icon("eye", "inl")} ${esc(S.common)}</span>` : ""}`);
+}
+function storyModal() {
+  // in-game: just the key facts; the full story sits in a collapsed toggle, no typewriter replay (Márk 2026-10-18)
+  const parts = storyParts(S), full = parts.map(t => tokHTML(t, plainOf(t).length)).join(" ");
+  modal(`<h2>${esc(S.title)}</h2><p class="muted small">${esc(S.world)}</p>
+    <div class="kv"><b>Az áldozat</b>${esc(S.victim)}</div><div class="kv"><b>A tetthely</b>${esc(S.scene)}</div><div class="kv"><b>A halál oka</b>${esc(S.weapon)}</div>
+    ${S.common ? `<div class="kv"><b>Közösen megállapítottátok</b>${esc(S.common.replace(/^Közösen megállapítjátok:\s*/, ""))}</div>` : ""}
+    <details class="tog"><summary>A teljes történet</summary><p class="storytxt" style="cursor:default">${full}</p></details>`);
+}
+function notesModal() {
+  const k = notesKey(), N = ls(k) || {text: "", sus: {}};
+  const lab = ["?", "gyanús", "tiszta"];
+  const chips = () => P.ch.map(sl => `<button data-s="${sl}" class="s${N.sus[sl] || 0}">${esc(S.chars[sl].name)}: ${lab[N.sus[sl] || 0]}</button>`).join("");
+  modal(`<h2>Jegyzetfüzet</h2><p class="small muted">Csak a te telefonodon látszik.</p><div class="sus" id="sus">${chips()}</div>
+    <textarea id="nt" placeholder="Ki mit mondott, ki hazudhat, ki hol volt...">${esc(N.text)}</textarea>`);
+  $("#nt").oninput = e => { N.text = e.target.value; ls(k, N); };
+  const bind = () => $("#sus").querySelectorAll("button").forEach(b => b.onclick = () => { const s = +b.dataset.s; N.sus[s] = ((N.sus[s] || 0) + 1) % 3; ls(k, N); $("#sus").innerHTML = chips(); bind(); const el = document.querySelector(`[data-pill="${s}"]`); if (el) { el.outerHTML = pillHTML(s, false); bindPills(); } });
+  bind();
+}
+
+/* ---------- 30 s observation, then public ---------- */
+// Murderer and accomplice: 3 lies to pick from, each showing whom it steers suspicion to (Márk 2026-10-18).
+// Lies never name somebody out of play or the liar himself. After the 30 s every observation goes onto that
+// character's public sheet on every phone (the evil ones' chosen lie, unmarked), since it gets talked about anyway.
+function liesFor(slot, i) { const t = S.tips[ROUND[i]][slot]; return Array.isArray(t) ? t.filter(x => x.r.every(r => P.ch.includes(r)) && !x.to.includes(slot)).slice(0, 3) : null; }
+function chosenLie(slot, i) {
+  const j = P.ch.indexOf(slot); let k = 0;
+  if (slot === SLOT) { const o = ST.obs.find(o => o.n === i + 1); if (o && o.k !== undefined) k = o.k; }
+  else SYNC.msgs.forEach(x => { const l = x.m.l; if (l && l.p === j && l.n === i) k = l.k; });   // the last choice counts
+  return k;
+}
+function obsText(slot, i) {
+  const lies = liesFor(slot, i);
+  if (lies) return (lies[chosenLie(slot, i)] || lies[0]).t;
+  const last = i === TIPS_AT[P.m].length - 1, acc = last && P.ch.length >= 5 && S.accTo === slot ? " " + S.accTip : "";
+  return S.tips[ROUND[i]][slot] + acc;
+}
+// how many observation rounds are over (their 30 s ended)
+function tipsDone() {
+  if (!ST.start) return 0;
+  const e = (NOW() - ST.start) / 1000 * P.x - INTRO, D = P.m * 60, T = TIPS_AT[P.m];
+  return T.filter((r, i) => e >= (D - r) + TIP * i + TIP).length;
+}
+function publicObs(slot) {
+  const n = tipsDone(); if (!n) return "";
+  return `<div class="kv"><b>Megfigyelései</b>${[...Array(n).keys()].map(i => `<p style="margin:4px 0">„${esc(obsText(slot, i))}”</p>`).join("")}</div>`;
+}
+function tipView(i) {
+  const lies = liesFor(SLOT, i), last = i === TIPS_AT[P.m].length - 1;
+  if (!ST.tipSeen[i]) {
+    ST.tipSeen[i] = 1;
+    ST.obs.push(lies ? {n: i + 1, lies: lies.map(x => x.t), k: 0, lie: lies[0].t} : {n: i + 1, text: obsText(SLOT, i)});
+    saveST(); ensureAudio(); chime(); if (navigator.vibrate) navigator.vibrate([120, 80, 120]);
+    if (lies) syncPost({l: {p: P.p, n: i, k: 0}});
+  }
+  const cur = chosenLie(SLOT, i);
+  const body = lies
+    ? `<p>Neked nincs valódi megfigyelésed. Válassz egy hazugságot: 30 másodperc múlva ez kerül ki mindenkinek a lapodra, mintha valóban láttad volna. Alatta látod, kire tereli a gyanút.</p><div class="lies">${lies.map((x, k) =>
+        `<button class="lie ${k === cur ? "on" : ""}" data-k="${k}"><span>„${esc(x.t)}”</span><small>Gyanú: ${x.to.map(t => esc(S.chars[t].name)).join(", ")}</small></button>`).join("")}</div>`
+    : `<p style="font-size:1.15rem">„${esc(obsText(SLOT, i))}”</p>`;
+  const m = modal(`<h2>${icon("eye", "inl")} Új megfigyelés</h2>${body}<div class="bar" style="margin-top:12px"><i id="tbar"></i></div><p class="small muted">Az óra áll. 30 másodperc múlva ${lies ? "a választott mondat" : "ez"} nyilvános lesz: mindenki látja a karaktered lapján. Gondold végig, mit jelent!</p>`, "tipbox");
+  m.querySelector(".x").remove(); m.onclick = null;
+  m.querySelectorAll(".lie").forEach(b => b.onclick = () => {
+    const k = +b.dataset.k, o = ST.obs.find(o => o.n === i + 1); if (o) { o.k = k; o.lie = lies[k].t; } saveST();
+    syncPost({l: {p: P.p, n: i, k}});
+    m.querySelectorAll(".lie").forEach(x => x.classList.toggle("on", x === b)); tone(520, .1);
+  });
+}
+
+/* ---------- end: everyone votes on their own phone (Márk 2026-10-18) ----------
+   Votes go through the game's ntfy topic. Every phone replays the same message log with the same rules,
+   so all of them reach the same verdict. 30 s per round; whoever has not voted by then abstains. */
+const VOTE_S = 30, TALK_S = 180, REVEAL = 3300;
+const VOTE = {sel: {}, mine: {}, drum: {}, key: ""};
+function gameEndAt() { return ST.start + (INTRO + P.m * 60 + TIP * TIPS_AT[P.m].length) / P.x * 1000; }
+function seedPick(arr, salt) { let h = 7; for (const c of String(P.g || P.t0) + salt) h = (h * 31 + c.charCodeAt(0)) >>> 0; return arr[h % arr.length]; }
+function voteState(now) {
+  const n = P.ch.length, roleOf = i => S.chars[P.ch[i]].role, dropRole = P.ch.some(sl => S.chars[sl].role === "B") ? "B" : "G";
+  let r = 1, start = gameEndAt(), kind = "main", cands = null, outB;  // outB: kept for old saved games, never set now
+  for (;;) {
+    const dl = start + VOTE_S * 1000 / P.x, pool = [...Array(n).keys()].filter(j => j !== outB && (!cands || cands.includes(j)));
+    const st = {r, start, dl, kind, pool, outB, n};
+    const votes = {}; let last = 0;
+    SYNC.msgs.forEach(x => { const v = x.m.v; if (v && v.r === r && x.t <= dl + 999 && pool.includes(v.j) && v.p !== v.j && v.p >= 0 && v.p < n) { votes[v.p] = v.j; last = Math.max(last, x.t); } });
+    st.votes = votes;
+    const done = Object.keys(votes).length >= n;
+    if (!done && now < dl + 2500) { st.phase = "vote"; return st; }   // a little grace for votes still in flight
+    st.resolve = done ? Math.min(last, dl) : dl + 2500;
+    const count = skip => { const t = Array(n).fill(0); Object.entries(votes).forEach(([v, j]) => { if (!(skip && roleOf(+v) === dropRole)) t[j]++; }); return t; };
+    let tally = count(false), max = Math.max(...pool.map(j => tally[j])), top = pool.filter(j => tally[j] === max), next;
+    if (top.length > 1 && kind !== "tie") { st.tie = top; next = {kind: "tie", cands: top}; }
+    else {
+      if (top.length > 1) {   // second tie: the evil vote that only steers is dropped, then lots
+        st.dropped = dropRole; tally = count(true); max = Math.max(...pool.map(j => tally[j])); top = pool.filter(j => tally[j] === max);
+        if (top.length > 1) { st.lot = 1; top = [seedPick(top, "r" + r)]; }
+      }
+      st.j = top[0]; st.role = roleOf(st.j); st.max = max;
+      st.tally = tally; st.phase = "verdict"; return st;
+    }
+    st.tally = tally;
+    // 3 minutes of arguing before the next round; anyone can cut it short
+    let ns = st.resolve + (REVEAL + TALK_S * 1000) / P.x;
+    SYNC.msgs.forEach(x => { if (x.m.s && x.m.s.r === r && x.t >= st.resolve) ns = Math.min(ns, Math.max(x.t, st.resolve + REVEAL)); });
+    st.next = ns;
+    if (now < ns) { st.phase = "between"; return st; }
+    r++; start = ns; kind = next.kind; cands = next.cands || null; if (next.outB !== undefined) outB = next.outB;
+  }
+}
+function endView() {
+  if (P.p === 0 && AU.mode !== "done") stopMusic();
+  VOTE.key = ""; voteTick();
+}
+function voteTick() {
+  if (ls("vote-" + P.t0)) return;   // the offline one-phone vote was chosen
+  const now = NOW(), st = voteState(now);
+  const revealing = (st.phase === "between" || st.phase === "verdict") && now < st.resolve + REVEAL / P.x;
+  let guess = null;
+  if (st.phase === "verdict" && st.role === "G") SYNC.msgs.forEach(x => { if (!guess && x.m.g && x.t >= st.resolve) guess = x.m.g.j; });
+  const iVoted = st.votes[P.p] !== undefined || VOTE.mine[st.r] !== undefined;
+  const key = [st.phase, st.r, revealing, iVoted, guess, VOTE.fin].join("|");
+  if (key !== VOTE.key) { VOTE.key = key; voteRender(st, revealing, iVoted, guess); }
+  // live bits: countdown bar, vote counter, discussion clock
+  const left = (st.dl - now) / 1000 * P.x, b = $("#vbar");
+  if (b) { b.style.width = Math.max(0, 100 * left / VOTE_S) + "%"; b.parentNode.classList.toggle("low", left <= 10); }
+  const c = $("#vcount"); if (c) c.textContent = `${Object.keys(st.votes).length}/${st.n}`;
+  if (st.phase === "between" && !revealing) { const rem = (st.next - now) / 1000 * P.x; drawClock(rem / TALK_S, false, rem <= 30, rem); }
+}
+function voteRender(st, revealing, iVoted, guess) {
+  const roleOf = i => S.chars[P.ch[i]].role, nm = j => esc(S.chars[P.ch[j]].name);
+  const bar = `<div class="bar" style="margin:6px 0 4px"><i id="vbar" style="width:100%"></i></div>`;
+  if (VOTE.fin) return finalView(VOTE.fin);
+  if (st.phase === "vote" && !iVoted) {
+    const hint = st.kind === "tie" ? "Döntő kör: csak a döntetlenben érintettek közül választhatsz." : st.outB !== undefined ? "A bűntárs már lebukott, őt nem jelölheted." : "A szavazatodat senki nem látja.";
+    const rows = st.pool.filter(j => j !== P.p).map(j => { const sl = P.ch[j], c = S.chars[sl], k = susOf(sl), m = MARK[k];
+      return `<div class="vrow ${VOTE.sel[st.r] === j ? "on" : ""}" data-j="${j}"><div class="av">${pimg(S, sl)}</div><div class="nm"><b>${esc(c.name)}</b><small>${esc(c.title)}</small></div>
+        ${k !== "Q" ? `<div class="mymk" style="--c:${m.col}"><i>${icon(m.ic)}</i>${SUSLAB[k]}</div>` : ""}</div>`; }).join("");
+    app.innerHTML = `<div class="ballot"><h2 style="margin:8px 0 2px">${st.r > 1 ? st.r + ". szavazás: " : ""}Ki a gyilkos?</h2>${bar}<p class="small muted" style="margin:4px 0 8px">${hint} Aki 30 másodpercen belül nem szavaz, tartózkodik.</p>${rows}
+      <button class="btn" id="cast" ${VOTE.sel[st.r] === undefined ? "disabled" : ""}>Leadom a szavazatom</button>
+      ${P.p === 0 && st.r === 1 ? `<button class="btn ghost small" id="offline" style="opacity:.6">Nincs internet? Szavazás egy telefonon, körbeadva</button>` : ""}</div>`;
+    app.querySelectorAll(".vrow").forEach(e => e.onclick = () => { VOTE.sel[st.r] = +e.dataset.j; app.querySelectorAll(".vrow").forEach(x => x.classList.toggle("on", x === e)); $("#cast").disabled = false; });
+    $("#cast").onclick = () => { const j = VOTE.sel[st.r]; if (j === undefined) return; VOTE.mine[st.r] = j; syncPost({v: {r: st.r, p: P.p, j}}); tone(520, .15); voteTick(); };
+    if ($("#offline")) $("#offline").onclick = () => { ls("vote-" + P.t0, {i: 0, stage: "pass", votes: {}}); voteFlow(); };
+    return;
+  }
+  if (st.phase === "vote") {
+    app.innerHTML = `<div class="center" style="padding-top:12vh"><h1>Leadtad a szavazatod</h1>${bar}<p>Várjuk a többieket: <b id="vcount"></b></p><p class="small muted">Az eredmény mindenki telefonján egyszerre jelenik meg.</p></div>`;
+    return;
+  }
+  if (revealing) {
+    app.innerHTML = `<div class="center" style="padding-top:18vh"><h1>Számolás...</h1><p class="big drumb">${icon("drum", "", 64)}</p></div>`;
+    if (!VOTE.drum[st.r]) { VOTE.drum[st.r] = 1; ensureAudio(); drumroll(3); }
+    return;
+  }
+  // verdict screens: the accused fills the screen in black and white, the text sits on top; no vote counts (Márk 2026-10-18)
+  const talk = `<div class="center"><svg id="clock" viewBox="0 0 100 100" style="width:44vw;max-width:190px;height:auto"></svg></div><button class="btn" id="skip">Kész, szavazzunk most</button>`;
+  const wrap = (j, inner) => `<div class="reveal">${pimg(S, P.ch[j], {cls: "rvbg"})}<div class="rvin"><p class="rvname">${nm(j)}</p>${inner}</div></div>`;
+  const pickList = (title) => `<div class="ballot"><h3 style="margin:10px 0 0">${title}</h3>` + [...Array(st.n).keys()].filter(j => j !== st.j).map(j =>
+    `<div class="vrow" data-j="${j}"><div class="av">${pimg(S, P.ch[j])}</div><div class="nm"><b>${nm(j)}</b><small>${esc(S.chars[P.ch[j]].title)}</small></div></div>`).join("") + `</div><button class="btn" id="gcast" disabled>Ő a szemtanú</button>`;
+  let h;
+  if (st.phase === "between" && st.tie) {
+    h = `<h1 class="center">Döntetlen!</h1><p class="center">${st.tie.map(j => `<b>${nm(j)}</b>`).join(" és ")} ugyanannyi szavazatot kapott.</p>
+      <p class="center">3 perc érvelés, aztán új titkos szavazás, de már csak közöttük. Ha újra döntetlen, ${P.ch.some(sl => S.chars[sl].role === "B") ? "a bűntárs" : "a gyilkos"} szavazata nem számít.</p>${talk}`;
+  } else if (st.phase === "between") {
+    h = wrap(st.j, `<p class="rvrole" style="color:#f0a35e">A BŰNTÁRS volt!</p><p><b>„Volt egy társam.”</b> A gyilkos még köztetek van.</p>
+      <p class="small">3 perc érvelés, aztán új titkos szavazás. A bűntárs már nem jelölhető, de ő is szavaz.</p>${talk}`);
+  } else {
+    const r = st.role;
+    const note = st.dropped ? `<p class="small">Újra döntetlen lett, ezért ${st.dropped === "B" ? "a bűntárs" : "a gyilkos"} szavazata nem számított.${st.lot ? " Még így is döntetlen maradt, sorsolás döntött." : ""}</p>` : "";
+    const hasS = P.ch.some(sl => S.chars[sl].role === "S");
+    if (r === "G" && !hasS) {
+      VOTE.outcome = "good";
+      h = wrap(st.j, `${note}<p class="rvrole" style="color:#e8574a">A GYILKOS volt!</p><p class="rvrole" style="color:#5fc98d">Elkaptátok. Az ártatlanok nyertek!</p>`);
+    } else if (r === "B") {
+      VOTE.outcome = "evil";
+      h = wrap(st.j, `${note}<p class="rvrole" style="color:#f0a35e">A BŰNTÁRS volt!</p><p>Ő csak segített. A gyilkos megúszta, és egyedül nyert.</p>`);
+    } else if (r === "G" && guess === null) {
+      // the murderer guesses the witness: on his own phone, or on the host phone passed to him
+      const mine = st.j === P.p, host = P.p === 0;
+      h = wrap(st.j, `${note}<p class="rvrole" style="color:#e8574a">A GYILKOS volt!</p><p>Elkaptátok. Most még tippelhet, ki a szemtanú: ha eltalálja, a gonoszok nyernek.</p>
+        ${mine ? pickList("Ki a szemtanú?") : host ? `<p class="small">Add oda ezt a telefont neki, vagy a saját telefonján tippel.</p>${pickList(nm(st.j) + ": ki a szemtanú?")}` : ""}`);
+    } else if (r === "G") {
+      const ok = roleOf(guess) === "S"; VOTE.outcome = ok ? "evil" : "good";
+      h = wrap(st.j, `<p class="rvrole" style="color:#e8574a">A GYILKOS volt!</p><p>A szemtanú-tippje: <b>${nm(guess)}</b></p>
+        <p class="rvrole" style="color:${ok ? "#e8574a" : "#5fc98d"}">${ok ? "Eltalálta! A gonoszok nyertek!" : "Nem ő a szemtanú. Az ártatlanok nyertek!"}</p>`);
+    } else {
+      VOTE.outcome = "evil";
+      h = wrap(st.j, `${note}<p class="rvrole" style="color:#5fc98d">${r === "S" ? "A SZEMTANÚ volt." : "ÁRTATLAN volt."}</p><p class="rvrole" style="color:#e8574a">A gonoszok nyertek!</p>`);
+    }
+    // outcome known: text moves up, and everyone's portrait shows the role they really had (Márk 2026-10-18)
+    if (VOTE.outcome) {
+      const roles = `<div class="rvroles"${P.ch.length === 4 ? ' style="grid-template-columns:repeat(4,1fr)"' : ""}>` + P.ch.map(sl => { const c = S.chars[sl], m = MARK[c.role];
+        return `<div class="rr"><div class="av">${pimg(S, sl)}</div><i style="--c:${m.col}">${icon(m.ic)}</i><small>${esc(c.name)}</small><small class="muted">${c.roleName}</small></div>`; }).join("") + `</div>`;
+      // one closing screen instead of 2-3 steps: verdict, true roles, solution and missions (as toggles), new game
+      const more = `<div class="rvmore"><details class="tog"><summary>Mi történt valójában</summary><p>${esc(S.solution)}</p></details>
+        <details class="tog"><summary>Személyes titkok</summary>${P.ch.map(sl => `<p class="small"><b>${esc(S.chars[sl].name)}</b>: ${esc(S.chars[sl].secret)}</p>`).join("")}<p class="small muted">Meséljétek el, ki mit titkolt!</p></details></div>`;
+      h = h.replace('<div class="reveal">', '<div class="reveal done">').replace(/<\/div><\/div>$/, `${roles}${more}<button class="btn" id="new">Új játék</button></div></div>`);
+    }
+  }
+  app.innerHTML = h; window.scrollTo(0, 0);
+  if ($("#skip")) $("#skip").onclick = () => { $("#skip").disabled = true; syncPost({s: {r: st.r}}); };
+  if ($("#gcast")) {
+    let sel = null;
+    app.querySelectorAll(".vrow").forEach(e => e.onclick = () => { sel = +e.dataset.j; app.querySelectorAll(".vrow").forEach(x => x.classList.toggle("on", x === e)); $("#gcast").disabled = false; });
+    $("#gcast").onclick = () => { $("#gcast").disabled = true; syncPost({g: {j: sel}}); };
+  }
+  if ($("#new")) $("#new").onclick = () => { location.hash = ""; location.reload(); };
+  if (st.phase === "verdict" && VOTE.outcome && !VOTE.toned) { VOTE.toned = 1; tone(VOTE.outcome === "good" ? 660 : 160, 1.2, "triangle", .3); }
+}
+function finalView(outcome) {
+  let h = `<p class="big" style="color:${outcome === "good" ? "var(--green)" : "var(--red)"}">${outcome === "good" ? "Az ártatlanok nyertek!" : "A gonoszok nyertek!"}</p>
+    <div class="panel"><h3>Mi történt valójában</h3><p>${esc(S.solution)}</p></div><h3>Ki kicsoda volt</h3><div class="grid">`;
+  P.ch.forEach(sl => { const c = S.chars[sl], ev = c.role === "G" || c.role === "B"; h += `<div class="c">${pimg(S, sl, {evil: ev})}<b>${esc(c.name)}</b><br><span class="badge ${ev ? "red" : c.role === "S" ? "blue" : ""}">${c.roleName}</span></div>`; });
+  h += `</div><div class="panel"><h3>Személyes titkok</h3><p class="small muted">Meséljétek el, ki mit titkolt!</p>` +
+    P.ch.map(sl => `<p class="small"><b>${esc(S.chars[sl].name)}</b>: ${esc(S.chars[sl].secret)}</p>`).join("") + `</div><button class="btn" id="new">Új játék</button>`;
+  app.innerHTML = h; window.scrollTo(0, 0);
+  $("#new").onclick = () => { location.hash = ""; location.reload(); };
+}
+/* ---------- offline fallback: the old secret vote on the host phone, passed around ---------- */
+function voteFlow() {
+  const k = "vote-" + P.t0, V = ls(k) || {i: 0, stage: "pass", votes: {}}, n = P.n.length, save = () => ls(k, V);
+  const roleOf = i => S.chars[P.ch[i]].role;
+  if (V.stage === "pass") {
+    const voted = Object.keys(V.votes).length;
+    if (voted >= n) { V.stage = "count"; save(); return voteFlow(); }
+    app.innerHTML = `<div class="center" style="padding-top:8vh"><h1>Titkos szavazás</h1><p>Add tovább a telefont annak, aki még nem szavazott.</p>
+      <p class="big">${voted}/${n}</p><p class="muted small">Senki ne nézzen oda!</p><button class="btn" id="me">Én jövök</button></div>`;
+    $("#me").onclick = () => { ensureAudio(); V.stage = "who"; save(); voteFlow(); };
+  } else if (V.stage === "who") {
+    app.innerHTML = `<h2>Ki vagy?</h2><p class="small muted">Koppints a saját karakteredre.</p><div class="grid">` +
+      P.ch.map((sl, j) => j in V.votes ? "" : `<div class="c" data-j="${j}">${pimg(S, sl)}<b>${esc(S.chars[sl].name)}</b></div>`).join("") + `</div>`;
+    app.querySelectorAll(".grid .c").forEach(e => e.onclick = () => { V.i = +e.dataset.j; V.stage = "pick"; save(); voteFlow(); });
+  } else if (V.stage === "pick") {
+    let sel = null;
+    app.innerHTML = `<h2>${esc(lab(V.i))}, ki a gyilkos?</h2><p class="small muted">A szavazatodat senki nem látja.${V.round2 ? " Második kör: csak a döntetlenben érintettek közül választhatsz." : V.outB !== undefined ? " A bűntárs már lebukott, őt nem jelölheted." : ""}</p><div class="grid">` +
+      P.ch.map((sl, j) => j === V.i || j === V.outB || (V.round2 && !V.cands.includes(j)) ? "" : `<div class="c" data-j="${j}">${pimg(S, sl)}<b>${esc(S.chars[sl].name)}</b></div>`).join("") +
+      `</div><button class="btn" id="cast" disabled>Leadom a szavazatom</button>`;
+    app.querySelectorAll(".grid .c").forEach(e => e.onclick = () => { sel = +e.dataset.j; app.querySelectorAll(".grid .c").forEach(x => x.classList.toggle("on", x === e)); $("#cast").disabled = false; });
+    $("#cast").onclick = () => { V.votes[V.i] = sel; V.stage = "pass"; save(); tone(520, .15); voteFlow(); };
+  } else if (V.stage === "count") {
+    app.innerHTML = `<div class="center" style="padding-top:18vh"><h1>Számolás...</h1><p class="big drumb">${icon("drum", "", 64)}</p></div>`;
+    ensureAudio(); drumroll(3);
+    setTimeout(() => { V.stage = "reveal"; save(); voteFlow(); }, 3300);
+  } else if (V.stage === "reveal") {
+    // second tie: 4-5 players drop the murderer's vote, 6 players only the accomplice's (Márk 2026-10-18)
+    const hasB = P.ch.some(sl => S.chars[sl].role === "B"), hasS = P.ch.some(sl => S.chars[sl].role === "S");
+    const dropRole = hasB ? "B" : "G", dropName = hasB ? "a bűntárs" : "a gyilkos";
+    const count = skipEvil => { const t = Array(n).fill(0); Object.entries(V.votes).forEach(([v, j]) => { if (!(skipEvil && roleOf(+v) === dropRole)) t[j]++; }); return t; };
+    let tally = count(false), max = Math.max(...tally), top = tally.map((c, j) => c === max ? j : -1).filter(j => j >= 0);
+    let h = `<h1 class="center">Az ítélet</h1>`, note = "";
+    if (top.length > 1 && V.round2) {
+      // second tie: the evil players' votes no longer count (they only steer); if still tied, draw lots
+      tally = count(true); max = Math.max(...tally); top = tally.map((c, j) => c === max ? j : -1).filter(j => j >= 0);
+      note = `<div class="panel small"><b>Újra döntetlen lett.</b> Ilyenkor ${dropName} szavazata nem számít, hiszen ő úgyis csak terel. A gép kivette a szavazatát, és újraszámolt.`;
+      if (top.length > 1) { if (V.lot === undefined) V.lot = top[Math.floor(Math.random() * top.length)]; note += ` Még így is döntetlen maradt, ezért sorsolás döntött.`; top = [V.lot]; }
+      note += `</div>`;
+      if (!V.noteShown) { V.noteShown = 1; save(); setTimeout(() => modal(`<h2>Újra döntetlen</h2>${note}<button class="btn" onclick="closeModal()">Értem, jöjjön az ítélet</button>`), 50); }
+    }
+    if (top.length > 1 && !V.round2) {
+      h += `<p class="big">Döntetlen!</p><p class="center">${top.map(j => `<b>${esc(lab(j))}</b>`).join(" és ")} ugyanannyi szavazatot kapott.</p>
+        <p class="center">Még <b>3 perc</b> érvelés, aztán új titkos szavazás, de már csak közöttük. Ebben a körben még mindenki szavazata számít.</p>
+        <p class="center small muted">Ha másodszor is döntetlen lesz, ${dropName} szavazatát a gép kiveszi, így biztosan lesz ítélet.</p><button class="btn" id="extra">Indul a 3 perc</button>`;
+      V.cands = top;
+    } else {
+      h += note;
+      const j = top[0], r = roleOf(j), sl = P.ch[j], evil = r === "G" || r === "B";
+      h += `<div class="center flip">${pimg(S, sl, {cls: "pfp", evil})}</div><p class="big">${esc(S.chars[sl].name)}</p><p class="center muted">${max} szavazat</p>`;
+      if (r === "G" && !hasS) { h += `<p class="big" style="color:var(--red)">A GYILKOS volt!</p><p class="big" style="color:var(--green)">Az ártatlanok nyertek!</p>`; V.outcome = "good"; }
+      else if (r === "G") { h += `<p class="big" style="color:var(--red)">A GYILKOS volt!</p><p class="center">Utolsó esély: ha kitalálja, ki a szemtanú, mégis a gonoszok nyernek.</p><button class="btn" id="g">${esc(lab(j))}, tippelj a szemtanúra</button>`; V.conv = j; }
+      else if (r === "B") { h += `<p class="big" style="color:#f0a35e">A BŰNTÁRS volt!</p><p class="center">Ő csak segített. A gyilkos megúszta, és egyedül nyert.</p>`; V.outcome = "evil"; }
+      else { h += `<p class="big" style="color:var(--green)">ÁRTATLAN volt.</p><p class="big" style="color:var(--red)">A gonoszok nyertek!</p>`; V.outcome = "evil"; }
+    }
+    h += `<div class="panel small"><b>Szavazatok:</b> ${P.ch.map((sl, j) => `${esc(lab(j))}: ${tally[j]}`).join(" · ")}</div>`;
+    if (V.outcome) h += `<button class="btn" id="fin">Megoldás és szerepek</button>`;
+    app.innerHTML = h; save();
+    tone(V.outcome === "good" ? 660 : 160, 1.2, "triangle", .3);
+    if ($("#extra")) $("#extra").onclick = () => { ensureAudio(); V.stage = "extra"; V.extraEnd = Date.now() + 180000 / P.x; save(); voteFlow(); };
+    if ($("#g")) $("#g").onclick = () => { V.stage = "guess"; save(); voteFlow(); };
+    if ($("#fin")) $("#fin").onclick = () => { V.stage = "final"; save(); voteFlow(); };
+  } else if (V.stage === "extra") {
+    app.innerHTML = `<div class="center" style="padding-top:4vh"><h1>Még 3 perc!</h1><p>${V.revote ? "A gyilkos még köztetek van. Ki az?" : `Győzzétek meg egymást: ${V.cands.map(j => `<b>${esc(S.chars[P.ch[j]].name)}</b>`).join(" vagy ")}?`}</p>
+      <svg id="clock" viewBox="0 0 100 100" style="width:60vw;max-width:260px;height:auto"></svg><button class="btn" id="now">Kész, szavazzunk most</button></div>`;
+    const go = () => { clearInterval(V._t); V.stage = "pass"; V.votes = {}; if (V.revote) { V.revote = 0; V.round2 = 0; delete V.lot; delete V.noteShown; } else V.round2 = 1; save(); voteFlow(); };
+    $("#now").onclick = go;
+    let last = -1;
+    V._t = setInterval(() => {
+      if (!$("#now")) return clearInterval(V._t);
+      const rem = (V.extraEnd - Date.now()) / 1000 * P.x;
+      drawClock(rem / 180, false, rem <= 30, rem);
+      if (rem <= 60) { const sec = Math.ceil(rem); if (sec !== last) { last = sec; tick(1 - rem / 60); } }
+      if (rem <= 0) go();
+    }, 200);
+  } else if (V.stage === "guess") {
+    let sel = null; const j0 = V.conv;
+    app.innerHTML = `<h2>${esc(lab(j0))}: ki a szemtanú?</h2><div class="grid">` +
+      P.ch.map((sl, j) => j === j0 ? "" : `<div class="c" data-j="${j}">${pimg(S, sl)}<b>${esc(S.chars[sl].name)}</b></div>`).join("") +
+      `</div><button class="btn" id="cast" disabled>Ez a tippem</button>`;
+    app.querySelectorAll(".grid .c").forEach(e => e.onclick = () => { sel = +e.dataset.j; app.querySelectorAll(".grid .c").forEach(x => x.classList.toggle("on", x === e)); $("#cast").disabled = false; });
+    $("#cast").onclick = () => { V.guess = sel; V.outcome = roleOf(sel) === "S" ? "evil" : "good"; V.stage = "guessed"; save(); voteFlow(); };
+  } else if (V.stage === "guessed") {
+    const ok = V.outcome === "evil";
+    app.innerHTML = `<div class="center flip">${pimg(S, P.ch[V.guess], {cls: "pfp"})}</div><p class="big">${esc(S.chars[P.ch[V.guess]].name)}</p>
+      <p class="big" style="color:${ok ? "var(--red)" : "var(--green)"}">${ok ? "Eltalálta a szemtanút! A gonoszok nyertek!" : "Nem ő a szemtanú. Az ártatlanok nyertek!"}</p><button class="btn" id="fin">Megoldás és szerepek</button>`;
+    tone(ok ? 160 : 660, 1.2, "triangle", .3);
+    $("#fin").onclick = () => { V.stage = "final"; save(); voteFlow(); };
+  } else {
+    let h = `<p class="big" style="color:${V.outcome === "good" ? "var(--green)" : "var(--red)"}">${V.outcome === "good" ? "Az ártatlanok nyertek!" : "A gonoszok nyertek!"}</p>
+      <div class="panel"><h3>Mi történt valójában</h3><p>${esc(S.solution)}</p></div><h3>Ki kicsoda volt</h3><div class="grid">`;
+    P.ch.forEach((sl, j) => { const c = S.chars[sl], ev = c.role === "G" || c.role === "B"; h += `<div class="c">${pimg(S, sl, {evil: ev})}<b>${esc(c.name)}</b><br><span class="badge ${ev ? "red" : c.role === "S" ? "blue" : ""}">${c.roleName}</span></div>`; });
+    h += `</div><div class="panel"><h3>Személyes titkok</h3><p class="small muted">Meséljétek el, ki mit titkolt!</p>` +
+      P.ch.map((sl, j) => `<p class="small"><b>${esc(S.chars[sl].name)}</b>: ${esc(S.chars[sl].secret)}</p>`).join("") +
+      `</div><button class="btn" id="new">Új játék</button>`;
+    app.innerHTML = h;
+    $("#new").onclick = () => { location.hash = ""; location.reload(); };
+  }
+  window.scrollTo(0, 0);
+}
+
+/* ===================== router ===================== */
+async function route() {
+  const m = location.hash.match(/^#c=(.+)$/);
+  if (m) return startGame(m[1]);
+  const d = location.hash.match(/^#s=(S\d\d)$/);
+  await lobby();
+  if (d && LIB.owned.includes(d[1])) { history.replaceState(null, "", location.pathname); coverView(d[1]); }
+}
+window.addEventListener("hashchange", () => location.reload());
+route();
+</script>
+</body>
+</html>
