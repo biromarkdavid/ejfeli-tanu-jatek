@@ -725,10 +725,9 @@ function myRole() {
 }
 // order requested by Márk, unnumbered: public -> appearance -> where -> victim -> observations (incl. the 30 s observations received)
 function myCard(skipPublic) {
-  const obs = (ST.obs || []).map(o => o.lie !== undefined
-    ? `<li><span class="muted">Választott hazugság (${o.n}. kör):</span> „${esc(o.lie)}”</li>`
-    : o.lies ? `<li><span class="muted">${o.n}. kör:</span> nem választottál hazugságot.</li>`
-    : `<li><span class="muted">${o.n}. megfigyelés:</span> „${esc(o.text)}”</li>`).join("");
+  const obs = (ST.obs || []).map(o => o.lie !== undefined || o.liar
+    ? `<li><span class="muted">Választott hazugság (${o.n}. kör):</span> „${esc(o.lie ?? o.text)}”</li>`
+    : `<li><span class="muted">Eszedbe jutott (${o.n}. kör):</span> „${esc(o.text)}”</li>`).join("");
   // only the murderer and the accomplice get to prepare their story about how they look (Márk 2026-10-18);
   // the others should be caught off guard when somebody points at their sleeve
   const evil = ME.role === "G" || ME.role === "B";
@@ -746,7 +745,7 @@ function readView(step) {
       <div class="role ${ME.role}">${ME.roleName}</div></div></div>${myRole()}`;
   } else if (step === 1) {
     h += `<h2>Te és ${esc(S.victim.split(",")[0])}</h2>${myCard()}
-      <p class="small muted">A játék alatt időnként 30 másodpercre új megfigyelést kapsz, utána az nyilvános lesz: mindenki látja a karaktered lapján. A lapodat a játék alatt is megnézheted: koppints a saját képedre.</p>`;
+      <p class="small muted">A játék alatt időnként eszedbe jut valami: 30 másodperced van kiválasztani, melyiket mondod el, utána az nyilvános lesz, mindenki látja a karaktered lapján. A lapodat a játék alatt is megnézheted: koppints a saját képedre.</p>`;
   } else if (step === 2) {
     h += `<p class="badge gold" style="margin-top:6px">Csak neked</p><h2>Személyes titok</h2><div class="panel" style="font-size:1.12rem">${esc(ME.secret)}</div>
       <p class="small muted">A saját kis ármánykodásod a történetben. Nem ér pontot, de ebből lesznek a jó viták: őrizd, használd ki, vagy fordítsd a többiek ellen.</p>`;
@@ -927,24 +926,34 @@ function notesModal() {
   bind();
 }
 
-/* ---------- 30 s observation, then public ---------- */
-// Murderer and accomplice: 3 lies to pick from, each showing whom it steers suspicion to (Márk 2026-10-18).
-// Lies never name somebody out of play or the liar himself. After the 30 s every observation goes onto that
-// character's public sheet on every phone (the evil ones' chosen lie, unmarked), since it gets talked about anyway.
-function liesFor(slot, i) { const t = S.tips[ROUND[i]][slot]; return Array.isArray(t) ? t.filter(x => x.r.every(r => P.ch.includes(r)) && !x.to.includes(slot)).slice(0, 3) : null; }
-function chosenLie(slot, i) {
+/* ---------- 30 s "eszembe jutott", then public ---------- */
+// Márk 2026-10-22: everybody chooses. The murderer picks from 3 lies, the accomplice from 2 lies, every innocent
+// (the witness too) from 2 true memories. Lies are a bit vaguer, truths a bit more concrete, so read aloud they sound alike.
+// Lies never name somebody out of play or the liar himself; each shows whom it steers suspicion to.
+// After the 30 s the chosen line goes onto that character's public sheet on every phone (unmarked).
+const isLiar = slot => S.chars[slot].role === "G" || S.chars[slot].role === "B";
+function optsFor(slot, i) {
+  const t = S.tips[ROUND[i]][slot];
+  if (!Array.isArray(t)) return [{t, to: []}];
+  if (typeof t[0] === "string") return t.map(x => ({t: x, to: []}));
+  // the murderer and the accomplice know each other (Márk 2026-10-22), so neither lie points at the evil side
+  return t.filter(x => x.r.every(r => P.ch.includes(r)) && !x.to.some(isLiar)).slice(0, S.chars[slot].role === "B" ? 2 : 3);
+}
+function chosenOpt(slot, i) {
   const j = P.ch.indexOf(slot); let k = 0;
   if (slot === SLOT) { const o = ST.obs.find(o => o.n === i + 1); if (o && o.k !== undefined) k = o.k; }
   else SYNC.msgs.forEach(x => { const l = x.m.l; if (l && l.p === j && l.n === i) k = l.k; });   // the last choice counts
   return k;
 }
-function obsText(slot, i) {
-  const lies = liesFor(slot, i);
-  if (lies) return (lies[chosenLie(slot, i)] || lies[0]).t;
-  const last = i === TIPS_AT[P.m].length - 1, acc = last && P.ch.length >= 5 && S.accTo === slot ? " " + S.accTip : "";
-  return S.tips[ROUND[i]][slot] + acc;
+function accExtra(slot, i) {
+  const last = i === TIPS_AT[P.m].length - 1;
+  return last && P.ch.length >= 5 && S.accTo === slot && !isLiar(slot) ? S.accTip : "";
 }
-// how many observation rounds are over (their 30 s ended)
+function obsText(slot, i) {
+  const o = optsFor(slot, i), a = accExtra(slot, i);
+  return (o[chosenOpt(slot, i)] || o[0]).t + (a ? " " + a : "");
+}
+// how many rounds are over (their 30 s ended)
 function tipsDone() {
   if (!ST.start) return 0;
   const e = (NOW() - ST.start) / 1000 * P.x - INTRO, D = P.m * 60, T = TIPS_AT[P.m];
@@ -952,25 +961,27 @@ function tipsDone() {
 }
 function publicObs(slot) {
   const n = tipsDone(); if (!n) return "";
-  return `<div class="kv"><b>Megfigyelései</b>${[...Array(n).keys()].map(i => `<p style="margin:4px 0">„${esc(obsText(slot, i))}”</p>`).join("")}</div>`;
+  return `<div class="kv"><b>Ami eszébe jutott</b>${[...Array(n).keys()].map(i => `<p style="margin:4px 0">„${esc(obsText(slot, i))}”</p>`).join("")}</div>`;
 }
 function tipView(i) {
-  const lies = liesFor(SLOT, i), last = i === TIPS_AT[P.m].length - 1;
+  const opts = optsFor(SLOT, i), liar = isLiar(SLOT), extra = accExtra(SLOT, i);
   if (!ST.tipSeen[i]) {
     ST.tipSeen[i] = 1;
-    ST.obs.push(lies ? {n: i + 1, lies: lies.map(x => x.t), k: 0, lie: lies[0].t} : {n: i + 1, text: obsText(SLOT, i)});
+    ST.obs.push({n: i + 1, k: 0, liar, text: opts[0].t + (extra ? " " + extra : "")});
     saveST(); ensureAudio(); chime(); if (navigator.vibrate) navigator.vibrate([120, 80, 120]);
-    if (lies) syncPost({l: {p: P.p, n: i, k: 0}});
+    syncPost({l: {p: P.p, n: i, k: 0}});
   }
-  const cur = chosenLie(SLOT, i);
-  const body = lies
-    ? `<p>Neked nincs valódi megfigyelésed. Válassz egy hazugságot: 30 másodperc múlva ez kerül ki mindenkinek a lapodra, mintha valóban láttad volna. Alatta látod, kire tereli a gyanút.</p><div class="lies">${lies.map((x, k) =>
-        `<button class="lie ${k === cur ? "on" : ""}" data-k="${k}"><span>„${esc(x.t)}”</span><small>Gyanú: ${x.to.map(t => esc(S.chars[t].name)).join(", ")}</small></button>`).join("")}</div>`
-    : `<p style="font-size:1.15rem">„${esc(obsText(SLOT, i))}”</p>`;
-  const m = modal(`<h2>${icon("eye", "inl")} Új megfigyelés</h2>${body}<div class="bar" style="margin-top:12px"><i id="tbar"></i></div><p class="small muted">Az óra áll. 30 másodperc múlva ${lies ? "a választott mondat" : "ez"} nyilvános lesz: mindenki látja a karaktered lapján. Gondold végig, mit jelent!</p>`, "tipbox");
+  const cur = chosenOpt(SLOT, i);
+  const intro = liar
+    ? `Neked nincs valódi emléked. Válassz egy hazugságot: 30 másodperc múlva ez kerül ki mindenkinek a lapodra, mintha valóban így lett volna. Alatta látod, kire tereli a gyanút.`
+    : opts.length > 1 ? `Két dolog jutott eszedbe, mindkettő igaz. Válaszd ki, melyiket mondod el: 30 másodperc múlva ez kerül ki mindenkinek a lapodra.` : "";
+  const body = `${intro ? `<p>${intro}</p>` : ""}<div class="lies">${opts.map((x, k) =>
+      `<button class="lie ${k === cur ? "on" : ""}" data-k="${k}"><span>„${esc(x.t)}”</span>${liar ? `<small>Gyanú: ${x.to.map(t => esc(S.chars[t].name)).join(", ")}</small>` : ""}</button>`).join("")}</div>` +
+    (extra ? `<p class="small">És ezt is hozzáteszed: „${esc(extra)}”</p>` : "");
+  const m = modal(`<h2>${icon("eye", "inl")} Eszembe jutott...</h2>${body}<div class="bar" style="margin-top:12px"><i id="tbar"></i></div><p class="small muted">Az óra áll. 30 másodperc múlva a választott mondat nyilvános lesz: mindenki látja a karaktered lapján. Gondold végig, mit jelent!</p>`, "tipbox");
   m.querySelector(".x").remove(); m.onclick = null;
   m.querySelectorAll(".lie").forEach(b => b.onclick = () => {
-    const k = +b.dataset.k, o = ST.obs.find(o => o.n === i + 1); if (o) { o.k = k; o.lie = lies[k].t; } saveST();
+    const k = +b.dataset.k, o = ST.obs.find(o => o.n === i + 1); if (o) { o.k = k; o.text = opts[k].t + (extra ? " " + extra : ""); } saveST();
     syncPost({l: {p: P.p, n: i, k}});
     m.querySelectorAll(".lie").forEach(x => x.classList.toggle("on", x === b)); tone(520, .1);
   });
@@ -1085,7 +1096,7 @@ function voteRender(st, revealing, iVoted, guess) {
     } else if (r === "G" && guess === null) {
       // the murderer guesses the witness: on his own phone, or on the host phone passed to him
       const mine = st.j === P.p, host = P.p === 0;
-      h = wrap(st.j, `${note}<p class="rvrole" style="color:#e8574a">A GYILKOS volt!</p><p>Elkaptátok. Most még tippelhet, ki a szemtanú: ha eltalálja, a gonoszok nyernek.</p>
+      h = wrap(st.j, `${note}<p class="rvrole" style="color:#e8574a">A GYILKOS volt!</p><p>Elkaptátok. Most még a bűntársával összesúgva tippelhet, ki a szemtanú: ha eltalálja, a gonoszok nyernek.</p>
         ${mine ? pickList("Ki a szemtanú?") : host ? `<p class="small">Add oda ezt a telefont neki, vagy a saját telefonján tippel.</p>${pickList(nm(st.j) + ": ki a szemtanú?")}` : ""}`);
     } else if (r === "G") {
       const ok = roleOf(guess) === "S"; VOTE.outcome = ok ? "evil" : "good";
@@ -1174,7 +1185,7 @@ function voteFlow() {
       const j = top[0], r = roleOf(j), sl = P.ch[j], evil = r === "G" || r === "B";
       h += `<div class="center flip">${pimg(S, sl, {cls: "pfp", evil})}</div><p class="big">${esc(S.chars[sl].name)}</p><p class="center muted">${max} szavazat</p>`;
       if (r === "G" && !hasS) { h += `<p class="big" style="color:var(--red)">A GYILKOS volt!</p><p class="big" style="color:var(--green)">Az ártatlanok nyertek!</p>`; V.outcome = "good"; }
-      else if (r === "G") { h += `<p class="big" style="color:var(--red)">A GYILKOS volt!</p><p class="center">Utolsó esély: ha kitalálja, ki a szemtanú, mégis a gonoszok nyernek.</p><button class="btn" id="g">${esc(lab(j))}, tippelj a szemtanúra</button>`; V.conv = j; }
+      else if (r === "G") { h += `<p class="big" style="color:var(--red)">A GYILKOS volt!</p><p class="center">Utolsó esély: ha a bűntársával összesúgva kitalálja, ki a szemtanú, mégis a gonoszok nyernek.</p><button class="btn" id="g">${esc(lab(j))}, tippelj a szemtanúra</button>`; V.conv = j; }
       else if (r === "B") { h += `<p class="big" style="color:#f0a35e">A BŰNTÁRS volt!</p><p class="center">Ő csak segített. A gyilkos megúszta, és egyedül nyert.</p>`; V.outcome = "evil"; }
       else { h += `<p class="big" style="color:var(--green)">ÁRTATLAN volt.</p><p class="big" style="color:var(--red)">A gonoszok nyertek!</p>`; V.outcome = "evil"; }
     }
@@ -1228,9 +1239,10 @@ function voteFlow() {
 async function route() {
   const m = location.hash.match(/^#c=(.+)$/);
   if (m) return startGame(m[1]);
-  const d = location.hash.match(/^#s=(S\d\d)$/);
+  // Márk 2026-10-22: no deep link straight into a story (its narration ran while the page was still loading);
+  // every entry lands on the picker, and the story starts only when it is tapped there
+  if (location.hash) history.replaceState(null, "", location.pathname);
   await lobby();
-  if (d && LIB.owned.includes(d[1])) { history.replaceState(null, "", location.pathname); coverView(d[1]); }
 }
 window.addEventListener("hashchange", () => location.reload());
 route();
