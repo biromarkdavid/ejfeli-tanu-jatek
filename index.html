@@ -431,7 +431,42 @@ function unlockScream() {
   const swap = () => { a.pause(); a.src = "assets/sfx_scream.mp3"; a.preload = "auto"; a.load(); };
   a.play().then(swap).catch(swap);
 }
-function stopNarration() { NARR.gen++; if (window.speechSynthesis) speechSynthesis.cancel(); if (NARR.audio) NARR.audio.pause(); }
+// Chrome processes cancel() asynchronously: an utterance queued right after it can be killed too ("interrupted"),
+// which looked like "narration on, but silent" (Márk 2026-10-23). So cancel only when something is queued,
+// speak a moment later, in sentence-sized chunks (Chrome also stalls on long utterances), and retry once.
+function stopNarration() { NARR.gen++; const ss = window.speechSynthesis; if (ss && (ss.speaking || ss.pending)) { ss.cancel(); NARR.cut = Date.now(); } if (NARR.audio) NARR.audio.pause(); }
+function huVoice() { return (window.speechSynthesis ? speechSynthesis.getVoices() : []).find(v => /^hu/i.test(v.lang)); }
+function voicesReady() {
+  if (!window.speechSynthesis || speechSynthesis.getVoices().length) return Promise.resolve();
+  return new Promise(r => { const t = setTimeout(r, 1200); speechSynthesis.addEventListener("voiceschanged", () => { clearTimeout(t); r(); }, {once: true}); });
+}
+function chunksOf(text) {
+  const out = []; let off = 0;
+  for (const m of text.match(/[^.!?…]+[.!?…]+["”»)]*\s*|[^.!?…]+$/g) || [text]) {
+    if (out.length && (out[out.length - 1].t + m).length < 160) out[out.length - 1].t += m; else out.push({t: m, off});
+    off += m.length;
+  }
+  return out;
+}
+// speaks text chunk by chunk; onPos(charIndex) while speaking, onEnd() once at the end (also on failure)
+function speakText(text, gen, onPos, onEnd) {
+  const parts = chunksOf(text); let k = 0, retried = false, ended = false;
+  const end = () => { if (!ended) { ended = true; onEnd(); } };
+  const say = () => {
+    if (gen !== NARR.gen) return;
+    if (k >= parts.length) return end();
+    const c = parts[k], u = new SpeechSynthesisUtterance(c.t); u.lang = "hu-HU"; u.rate = .95;
+    const v = huVoice(); if (v) u.voice = v;
+    u.onboundary = e => onPos(c.off + e.charIndex + (e.charLength || 1));
+    u.onend = () => { if (gen !== NARR.gen) return; onPos(c.off + c.t.length); k++; say(); };
+    u.onerror = e => { if (gen !== NARR.gen) return;
+      if (!retried && (e.error === "interrupted" || e.error === "canceled")) { retried = true; setTimeout(say, 250); return; }
+      NARR.err = e.error; end(); };
+    speechSynthesis.speak(u);
+  };
+  const wait = Math.max(0, 150 - (Date.now() - (NARR.cut || 0)));
+  voicesReady().then(() => setTimeout(say, wait));
+}
 // el: container to type into (or null for voice only). Reveals the text progressively in sync with the voice.
 function narrate(story, el, onDone) {
   stopNarration();
@@ -449,14 +484,7 @@ function narrate(story, el, onDone) {
     const text = plainOf(parts[i]);
     let timer = setInterval(() => { if (gen !== NARR.gen) return clearInterval(timer); typeTo(i, done[i] + 1); if (!voiceOn && done[i] >= text.length) { clearInterval(timer); next(); } }, voiceOn ? 62 : 45);
     const next = () => { clearInterval(timer); typeTo(i, text.length); if (i < parts.length - 1) { scream(); setTimeout(() => runPart(i + 1), 4300); } else finish(); };
-    if (voiceOn) {
-      const u = new SpeechSynthesisUtterance(text); u.lang = "hu-HU"; u.rate = .95;
-      const v = speechSynthesis.getVoices().find(v => /^hu/i.test(v.lang)); if (v) u.voice = v;
-      u.onboundary = e => typeTo(i, e.charIndex + (e.charLength || 1));
-      u.onend = () => { if (gen === NARR.gen) next(); };
-      u.onerror = () => { if (gen === NARR.gen) next(); };
-      speechSynthesis.speak(u);
-    }
+    if (voiceOn) speakText(text, gen, pos => typeTo(i, pos), () => { if (gen === NARR.gen) next(); });
   };
   if (el) { el.onclick = () => { parts.forEach((p, i) => done[i] = plainOf(p).length); draw(); finish(); }; draw(); }
   runPart(0);
