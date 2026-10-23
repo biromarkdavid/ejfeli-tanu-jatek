@@ -623,7 +623,7 @@ function deal(base, i) {
     ls("st-" + base.t0 + "-0", {userStep: 0, tipSeen: {}, start, obs: []});
     fetch(`https://ntfy.sh/ejfeli-tanu-${base.g}`, {method: "POST", body: JSON.stringify({start}), keepalive: true}).catch(() => {});
     // switch to the game without a reload, so the music keeps playing (a hash change would reload the page)
-    const code = encodeCard({...base, p: 0}); history.pushState(null, "", "#c=" + code); startGame(code); return;
+    const code = encodeCard({...base, p: 0}); history.pushState(null, "", location.href.split("#")[0] + "#c=" + code); startGame(code); return;
   }
   app.innerHTML = `<h2 class="center" style="margin-top:4vh">${i + 1}. játékos</h2><p class="center muted">Olvasd be a telefonoddal. Csak a saját kódodat nézd!</p>
     <div class="center"><div class="qrbox" id="qr"></div></div>
@@ -1271,7 +1271,7 @@ async function route() {
   if (m) return startGame(m[1]);
   // Márk 2026-10-22: no deep link straight into a story (its narration ran while the page was still loading);
   // every entry lands on the picker, and the story starts only when it is tapped there
-  if (location.hash) history.replaceState(null, "", location.pathname);
+  if (location.hash) history.replaceState(null, "", location.href.split("#")[0]);   // absolute: the shop serves this page with a CDN <base href>
   await lobby();
 }
 window.addEventListener("hashchange", () => location.reload());
