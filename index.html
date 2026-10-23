@@ -251,7 +251,7 @@ const ROUND = "ABC";
 /* ===================== shop API: story texts only for the logged-in owner or a host's 24 h token ===================== */
 const API = "https://nuvugames.net/wp-json/et/v1", SHOP = "https://nuvugames.net";
 const STORIES = window.CATALOG, FULL = {}, TOK = {};
-const BUG = SHOP + "/ejfeli-tanu/#kapcsolat";  // bug report / feedback form (goes to hello@nuvugames.net)
+const BUG = SHOP + "/ejfeli-tanu/#kapcsolat";  // bug report / feedback form (goes to support@nuvugames.net)
 const bugLink = () => `<a class="btn ghost small" href="${BUG}" target="_blank" rel="noopener" style="margin-top:10px;opacity:.75">Hibát találtál vagy véleményed van? Írd meg nekünk</a>`;
 let LIB = {logged: false, owned: [], name: ""};
 async function apiStory(id, t) {
@@ -500,7 +500,7 @@ function narrate(story, el, onDone) {
 }
 
 /* ===================== main menu: catalog -> cover + narration -> settings (host) ===================== */
-const L = Object.assign({mode: 30, players: 4}, ls("lobby") || {});
+const L = Object.assign({mode: 60, players: 4}, ls("lobby") || {});   // 60 min = "Alap", the basic mode (Márk 2026-10-24)
 const saveL = () => ls("lobby", L);
 function coverSrc(s) { return `assets/${s.id}/cover.jpg`; }
 function coverFallback(s) {
@@ -569,7 +569,7 @@ function settingsView(s) {
   const st = document.createElement("div"); st.className = "setup-st"; cov.insertBefore(st, cov.querySelector(".cin"));
   requestAnimationFrame(() => cov.classList.add("setup"));
   const dials = [
-    {side: "l", cap: "Időkeret", vals: [15, 30, 60], unit: "perc", key: "mode"},
+    {side: "l", cap: "Időkeret", vals: [15, 30, 60], unit: "perc", key: "mode", names: {60: "Alap", 30: "Haladó", 15: "Villámkör"}},
     {side: "r", cap: "Játékosok", vals: [4, 5, 6], unit: "fő", key: "players"}];
   const STEP = 36 * Math.PI / 180;
   dials.forEach(d => {
@@ -578,7 +578,7 @@ function settingsView(s) {
     let ticks = ""; for (let k = 0; k < 40; k++) { const big = k % 4 === 0; ticks += `<line x1="${big ? 87 : 91}" y1="0" x2="97" y2="0" stroke="${big ? "#d9b46a" : "#d9b46a77"}" stroke-width="${big ? 1.2 : .7}" transform="rotate(${k * 9})"/>`; }
     d.el.innerHTML = `<svg viewBox="-100 -100 200 200"${d.side === "r" ? ' style="transform:scaleX(-1)"' : ""}><circle r="98" fill="none" stroke="#d9b46a99" stroke-width=".8"/><circle r="84" fill="none" stroke="#d9b46a33" stroke-width=".6"/><g class="tk">${ticks}</g></svg>`;
     st.appendChild(d.el);
-    d.labels = d.vals.map((v, i) => { const e = document.createElement("div"); e.className = "val"; e.innerHTML = `${v}<small>${d.unit}</small>`; e.onclick = ev => { ev.stopPropagation(); snap(d, i); }; st.appendChild(e); return e; });
+    d.labels = d.vals.map((v, i) => { const e = document.createElement("div"); e.className = "val"; e.innerHTML = `${v}<small>${d.unit}${d.names ? " · " + d.names[v] : ""}</small>`; e.onclick = ev => { ev.stopPropagation(); snap(d, i); }; st.appendChild(e); return e; });
     d.capEl = document.createElement("div"); d.capEl.className = "cap"; d.capEl.textContent = d.cap; st.appendChild(d.capEl);
   });
   const band = document.createElement("div"); band.className = "band"; st.appendChild(band);
@@ -765,9 +765,8 @@ function myRole() {
 }
 // order requested by Márk, unnumbered: public -> appearance -> where -> victim -> observations (incl. the 30 s observations received)
 function myCard(skipPublic) {
-  const obs = (ST.obs || []).map(o => o.lie !== undefined || o.liar
-    ? `<li><span class="muted">Választott hazugság (${o.n}. kör):</span> „${esc(o.lie ?? o.text)}”</li>`
-    : `<li><span class="muted">Eszedbe jutott (${o.n}. kör):</span> „${esc(o.text)}”</li>`).join("");
+  // the chosen 30 s lines are public, so they show in the public part of your own sheet (charModal), not here (Márk 2026-10-24)
+  const obs = "";
   // only the murderer and the accomplice get to prepare their story about how they look (Márk 2026-10-18);
   // the others should be caught off guard when somebody points at their sleeve
   const evil = ME.role === "G" || ME.role === "B";
@@ -917,7 +916,7 @@ function charModal(slot) {
   const c = S.chars[slot];
   modal(`<div class="chead"><div class="av">${pimg(S, slot)}</div><div style="flex:1"><h2 style="margin:0">${esc(c.name)}</h2><p class="muted small" style="margin:2px 0 0">${esc(c.title)}</p></div>
     <button class="hbtn zoomb" id="zoomb" title="Nagyítás">${icon("zoom")}</button></div>
-    <div class="kv"><b>Mindenki látta</b>${esc(c.dispute)}</div><div class="kv"><b>Mindenki tudja</b>${esc(c.weapon)}</div>${slot === SLOT ? "" : publicObs(slot)}
+    <div class="kv"><b>Mindenki látta</b>${esc(c.dispute)}</div><div class="kv"><b>Mindenki tudja</b>${esc(c.weapon)}</div>${publicObs(slot)}
     ${slot === SLOT ? `<div class="mine"><div class="row" style="align-items:center"><h3 style="margin:0">${icon("lock", "inl")} Csak neked</h3><div class="role ${ME.role}" style="font-size:1.15rem;text-align:right">${ME.roleName}</div></div>
       <details><summary>A szereped és hogyan nyersz</summary>${myRole()}</details>
       <details><summary>Amit tudsz</summary>${myCard(true)}</details>
@@ -1014,7 +1013,7 @@ function tipView(i) {
   const cur = chosenOpt(SLOT, i);
   const intro = liar
     ? `Neked nincs valódi emléked. Válassz egy hazugságot: 30 másodperc múlva ez kerül ki mindenkinek a lapodra, mintha valóban így lett volna. Alatta látod, kire tereli a gyanút.`
-    : opts.length > 1 ? `Két dolog jutott eszedbe, mindkettő igaz. Válaszd ki, melyiket mondod el: 30 másodperc múlva ez kerül ki mindenkinek a lapodra.` : "";
+    : opts.length > 1 ? `Két dolog jutott eszedbe, mindkettő igaz. Ha emlékszel rájuk, mindkettőt elmondhatod a többieknek, de a lapodra csak az egyik kerül ki: válaszd ki, melyik legyen. 30 másodperc múlva mindenki látja.` : "";
   const body = `${intro ? `<p>${intro}</p>` : ""}<div class="lies">${opts.map((x, k) =>
       `<button class="lie ${k === cur ? "on" : ""}" data-k="${k}"><span>„${esc(x.t)}”</span>${liar ? `<small>Gyanú: ${x.to.map(t => esc(S.chars[t].name)).join(", ")}</small>` : ""}</button>`).join("")}</div>` +
     (extra ? `<p class="small">És ezt is hozzáteszed: „${esc(extra)}”</p>` : "");
@@ -1132,7 +1131,7 @@ function voteRender(st, revealing, iVoted, guess) {
       h = wrap(st.j, `${note}<p class="rvrole" style="color:#e8574a">A GYILKOS volt!</p><p class="rvrole" style="color:#5fc98d">Elkaptátok. Az ártatlanok nyertek!</p>`);
     } else if (r === "B") {
       VOTE.outcome = "evil";
-      h = wrap(st.j, `${note}<p class="rvrole" style="color:#f0a35e">A BŰNTÁRS volt!</p><p>Ő csak segített. A gyilkos megúszta, és egyedül nyert.</p>`);
+      h = wrap(st.j, `${note}<p class="rvrole" style="color:#f0a35e">A BŰNTÁRS volt!</p><p>Ő csak segített. A gyilkos megúszta, és a bűntársával együtt nyertek.</p>`);
     } else if (r === "G" && guess === null) {
       // the murderer guesses the witness: on his own phone, or on the host phone passed to him
       const mine = st.j === P.p, host = P.p === 0;
@@ -1226,7 +1225,7 @@ function voteFlow() {
       h += `<div class="center flip">${pimg(S, sl, {cls: "pfp", evil})}</div><p class="big">${esc(S.chars[sl].name)}</p><p class="center muted">${max} szavazat</p>`;
       if (r === "G" && !hasS) { h += `<p class="big" style="color:var(--red)">A GYILKOS volt!</p><p class="big" style="color:var(--green)">Az ártatlanok nyertek!</p>`; V.outcome = "good"; }
       else if (r === "G") { h += `<p class="big" style="color:var(--red)">A GYILKOS volt!</p><p class="center">Utolsó esély: ha a bűntársával összesúgva kitalálja, ki a szemtanú, mégis a gonoszok nyernek.</p><button class="btn" id="g">${esc(lab(j))}, tippelj a szemtanúra</button>`; V.conv = j; }
-      else if (r === "B") { h += `<p class="big" style="color:#f0a35e">A BŰNTÁRS volt!</p><p class="center">Ő csak segített. A gyilkos megúszta, és egyedül nyert.</p>`; V.outcome = "evil"; }
+      else if (r === "B") { h += `<p class="big" style="color:#f0a35e">A BŰNTÁRS volt!</p><p class="center">Ő csak segített. A gyilkos megúszta, és a bűntársával együtt nyertek.</p>`; V.outcome = "evil"; }
       else { h += `<p class="big" style="color:var(--green)">ÁRTATLAN volt.</p><p class="big" style="color:var(--red)">A gonoszok nyertek!</p>`; V.outcome = "evil"; }
     }
     h += `<div class="panel small"><b>Szavazatok:</b> ${P.ch.map((sl, j) => `${esc(lab(j))}: ${tally[j]}`).join(" · ")}</div>`;
