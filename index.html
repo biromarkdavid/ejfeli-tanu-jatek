@@ -23,7 +23,7 @@ if(/^(jatek\.nuvugames\.net|biromarkdavid\.github\.io)$/.test(location.hostname)
 html,body{margin:0;background:var(--bg);color:var(--text)}
 body{font-family:Inter,system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.5;
   background:radial-gradient(ellipse at top,#2a2030 0%,var(--bg) 60%) fixed;min-height:100vh}
-#app{max-width:560px;margin:0 auto;padding:20px 16px calc(40px + env(safe-area-inset-bottom))}
+#app{max-width:560px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom))}  /* iOS Safari top bar overlaps the page with viewport-fit=cover (Márk 2026-10-24) */
 h1,h2,h3{font-family:"Playfair Display",Georgia,serif;margin:0 0 .4em;line-height:1.2}
 h1{font-size:2.2rem;color:var(--gold2)} h2{font-size:1.45rem;color:var(--gold2)} h3{font-size:1.05rem;color:var(--gold)}
 p{margin:.4em 0 .9em}
