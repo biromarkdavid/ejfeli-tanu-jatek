@@ -159,8 +159,9 @@ a.btn{text-decoration:none;display:block;text-align:center}
 .tile.locked:after{content:"";position:absolute;left:-12%;right:-12%;top:50%;height:4px;background:#d8352e;transform:rotate(-38deg);box-shadow:0 0 12px #d8352e99;pointer-events:none}
 .tile .noacc{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;display:flex;align-items:center;gap:6px;background:#120f15e6;border:1px solid #d8352e;color:#f1d9d6;font-size:.78rem;font-weight:700;padding:6px 10px;border-radius:999px;white-space:nowrap}
 .lbtns{display:flex;flex-direction:column;gap:6px}
-.lbtns a.btn{margin:0;padding:10px 8px;font-size:.88rem}
-.lbtns a.btn:first-child{background:#b8221d;color:#fff}
+/* one button under every cover (Márk 2026-10-24): owned = Játék indítása, free = Ingyen kipróbálom, rest = the subtle Részletek */
+.lbtns .btn{margin:0;padding:10px 8px;font-size:.88rem;width:100%}
+.lbtns .lb-main{background:#b8221d;color:#fff}
 .tile{position:relative;aspect-ratio:1/1;border-radius:16px;overflow:hidden;cursor:pointer;border:1px solid var(--line);box-shadow:0 6px 18px #0008}
 .tile img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s}
 .tile:active img{transform:scale(1.05)}
@@ -519,12 +520,15 @@ async function lobby() {
     const buy = s.pid ? `${SHOP}/penztar/?add-to-cart=${s.pid}` : s.url;
     h += `<div class="tw"><div class="tile${own ? "" : " locked"}" data-st="${s.id}"><img src="${coverSrc(s)}" onerror="this.onerror=null;this.src='${coverFallback(s)}'" alt="">
     ${own ? "" : `<span class="noacc">${icon("lock", "inl")} Nincs hozzáférésed</span>`}<div class="tt"><b>${esc(s.title)}</b></div></div>
-    ${own ? "" : `<div class="lbtns"><a class="btn" href="${buy}" target="_blank" rel="noopener">${s.id === "S01" ? "Ingyen kipróbálom" : "Megveszem"}</a><a class="btn ghost" href="${s.url}" target="_blank" rel="noopener">Részletek</a></div>`}</div>`; });
+    <div class="lbtns">${own ? `<button class="btn lb-main" data-play="${s.id}">Játék indítása</button>`
+      : s.id === "S01" ? `<a class="btn lb-main" href="${buy}" target="_blank" rel="noopener">Ingyen kipróbálom</a>`
+      : `<a class="btn ghost" href="${s.url}" target="_blank" rel="noopener">Részletek</a>`}</div></div>`; });
   app.innerHTML = h + `</div>`;
   app.querySelectorAll(".tile").forEach(e => e.onclick = () => {
     if (!LIB.owned.includes(e.dataset.st)) { window.open(STORIES.find(x => x.id === e.dataset.st).url, "_blank", "noopener"); return; }
     coverView(e.dataset.st, e.getBoundingClientRect());
   });
+  app.querySelectorAll("[data-play]").forEach(b => b.onclick = () => coverView(b.dataset.play, b.closest(".tw").querySelector(".tile").getBoundingClientRect()));
   $("#setb").onclick = settingsModal;
 }
 // crime music under the opening narration and the setup dials (Pixabay, Márk 2026-10-18)
