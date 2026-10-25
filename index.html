@@ -388,9 +388,8 @@ const drumroll = sec => { if (!CFG.sfx) return; for (let i = 0; i < sec * 18; i+
 function startMusic(story) {
   if (AU.mode || !CFG.music) return; AU.mode = "calm";
   // music runs through the whole game (Márk 2026-10-18): take over the intro track if it is still playing
-  if (IMUS.a) { AU.music = IMUS.a; IMUS.a = null; return; }
-  const play = (src, fail) => { const a = new Audio(src); a.loop = true; a.volume = .3; a.play().then(() => { AU.music = a; }).catch(fail); };
-  play(`assets/${story.id}/music.mp3`, () => play("assets/music_intro.mp3", () => drone()));
+  if (PL.on && PL.id === story.id) return;   // the cover already started this story's playlist, it just keeps going
+  PL.start(story.id);
 }
 function drone() {
   if (!AU.ctx) return;
@@ -408,7 +407,7 @@ function tensionOn(story) {
   });
 }
 function stopMusic() {
-  [AU.music, AU.tension].forEach(a => a && a.pause()); clearInterval(AU.pulse);
+  PL.stop(); [AU.music, AU.tension].forEach(a => a && a.pause()); clearInterval(AU.pulse);
   AU.nodes.forEach(o => { try { o.stop(); } catch (e) {} }); AU.nodes = []; if (AU.drone) AU.drone.gain.value = 0; AU.mode = "done";
 }
 /* ---------- narration: typewriter text + voice + scream at the murder (Márk 2026-10-18) ---------- */
@@ -487,13 +486,13 @@ function narrate(story, el, onDone) {
   const box = el && el.closest(".ctext");
   const typeTo = (i, target) => { done[i] = Math.max(done[i], Math.min(target, plainOf(parts[i]).length)); draw(); if (box) box.scrollTop = box.scrollHeight; };
   // ~5 s drawn-out scream; the music ducks under it, the story goes on once it fades
-  const scream = () => { if (CFG.sfx || CFG.narration) { const a = SCREAM.a || new Audio("assets/sfx_scream.mp3"); a.currentTime = 0; a.volume = 1; a.play().catch(() => {});
-    const m = IMUS.a || AU.music; if (m) { const v = m.volume; m.volume = v * .25; setTimeout(() => { if (m.volume < v) m.volume = v; }, 4600); } } };
+  const scream = () => { if (CFG.narration) { const a = SCREAM.a || new Audio("assets/sfx_scream.mp3"); a.currentTime = 0; a.volume = 1; a.play().catch(() => {});
+    PL.duck(.25, 4600); } };
   const runPart = i => {
     if (gen !== NARR.gen || i >= parts.length) return;
     const text = plainOf(parts[i]);
     let timer = setInterval(() => { if (gen !== NARR.gen) return clearInterval(timer); typeTo(i, done[i] + 1); if (!voiceOn && done[i] >= text.length) { clearInterval(timer); next(); } }, voiceOn ? 62 : 45);
-    const next = () => { clearInterval(timer); typeTo(i, text.length); if (i < parts.length - 1) { scream(); setTimeout(() => runPart(i + 1), 4300); } else finish(); };
+    const next = () => { clearInterval(timer); typeTo(i, text.length); if (i < parts.length - 1) { scream(); setTimeout(() => runPart(i + 1), CFG.narration ? 4300 : 600); } else finish(); };
     if (voiceOn) speakText(text, gen, pos => typeTo(i, pos), () => { if (gen === NARR.gen) next(); });
   };
   if (el) { el.onclick = () => { parts.forEach((p, i) => done[i] = plainOf(p).length); draw(); finish(); }; draw(); }
@@ -513,7 +512,7 @@ async function lobby() {
   stopNarration();
   app.innerHTML = `<div class="center" style="padding-top:30vh"><p class="muted">Betöltés...</p></div>`;
   await apiLibrary();
-  let h = `<div class="row" style="align-items:center;gap:12px;margin-top:4px"><button class="hbtn" id="setb" title="Beállítások" style="flex:0 0 auto;width:46px;height:46px;font-size:1.3rem">${icon("gear")}</button><h1 style="margin:0;flex:1">Éjféli Tanú</h1>${LIB.logged ? `<a class="btn ghost small" href="${SHOP}/fiokom/" style="flex:0 0 auto;width:auto;margin:0;max-width:44vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(LIB.name || "Fiókom")}</a>` : `<a class="btn ghost small" href="${SHOP}/fiokom/?et_return=1" style="flex:0 0 auto;width:auto;margin:0">Belépés</a>`}</div><p class="muted">Válassz egy rejtélyt. Koppints rá, és hallgassátok meg a történetet.</p><div class="cat">`;
+  let h = `<div class="row" style="align-items:center;gap:12px;margin-top:4px"><button class="hbtn" id="setb" title="Beállítások" style="flex:0 0 auto;width:46px;height:46px;font-size:1.3rem">${icon("gear")}</button><h1 style="margin:0;flex:1">Éjféli Tanú</h1>${LIB.logged ? `<a class="btn ghost small" href="${SHOP}/fiokom/" style="flex:0 0 auto;width:auto;margin:0;max-width:44vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(LIB.name || "Fiókom")}</a>` : `<a class="btn ghost small" href="${SHOP}/fiokom/?et_return=1" style="flex:0 0 auto;width:auto;margin:0">Belépés</a>`}</div><p class="muted">Válassz egy rejtélyt. Koppints rá, és hallgassátok meg a történetet.</p><p class="muted small" style="margin-top:-6px">A narráció és a zene tetszés szerint ki-be kapcsolható a fogaskerék gombbal (Beállítások).</p><div class="cat">`;
   if (!LIB.logged) h = h.replace('<div class="cat">', `<div class="panel" style="margin:6px 0 12px"><b>Jelentkezz be</b> azzal a fiókkal, amivel a játékot megrendelted. <a class="btn" style="margin-top:10px" href="${SHOP}/fiokom/?et_return=1">Belépés</a></div><div class="cat">`);
   else if (!LIB.owned.length) h = h.replace('<div class="cat">', `<div class="panel" style="margin:6px 0 12px">Még nincs játékod. Az első rejtélyt mi álljuk: <a href="${STORIES[0].url}">Méreg Camelotban, ingyen</a>.</div><div class="cat">`);
   STORIES.forEach(s => { const own = LIB.owned.includes(s.id);
@@ -532,17 +531,43 @@ async function lobby() {
   $("#setb").onclick = settingsModal;
 }
 // crime music under the opening narration and the setup dials (Pixabay, Márk 2026-10-18)
-const IMUS = {a: null};
-function introMusic(on) {
-  if (on) {
-    if (IMUS.a || !CFG.music) return;
-    const a = new Audio("assets/music_intro.mp3"); a.loop = true; a.volume = 0; IMUS.a = a;
-    a.play().then(() => { let v = 0; const t = setInterval(() => { if (IMUS.a !== a) return clearInterval(t); v = Math.min(.28, v + .02); a.volume = v; if (v >= .28) clearInterval(t); }, 80); }).catch(() => { IMUS.a = null; });
-  } else if (IMUS.a) {
-    const a = IMUS.a; IMUS.a = null;
-    const t = setInterval(() => { a.volume = Math.max(0, a.volume - .03); if (a.volume <= 0) { clearInterval(t); a.pause(); } }, 60);
-  }
-}
+// Background music: 5 Pixabay tracks per story (Pixabay Content License, Márk 2026-10-25), shuffled,
+// crossfaded into each other and looped forever. Hosted in the nuvugames.net media library (absolute URLs,
+// the shop serves this page with a CDN <base href>). The cover starts it, the game keeps it running.
+const MUSIC = {"S01":["https://nuvugames.net/wp-content/uploads/2026/10/et-music-S01-m1.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S01-m2.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S01-m3.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S01-m4.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S01-m5.mp3"],"S02":["https://nuvugames.net/wp-content/uploads/2026/10/et-music-S02-m1.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S02-m2.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S02-m3.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S02-m4.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S02-m5.mp3"],"S03":["https://nuvugames.net/wp-content/uploads/2026/10/et-music-S03-m1.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S03-m2.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S03-m3.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S03-m4.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S03-m5.mp3"],"S04":["https://nuvugames.net/wp-content/uploads/2026/10/et-music-S04-m1.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S04-m2.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S04-m3.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S04-m4.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S04-m5.mp3"],"S05":["https://nuvugames.net/wp-content/uploads/2026/10/et-music-S05-m1.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S05-m2.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S05-m3.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S05-m4.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S05-m5.mp3"],"S06":["https://nuvugames.net/wp-content/uploads/2026/10/et-music-S06-m1.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S06-m2.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S06-m3.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S06-m4.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S06-m5.mp3"],"S07":["https://nuvugames.net/wp-content/uploads/2026/10/et-music-S07-m1.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S07-m2.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S07-m3.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S07-m4.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S07-m5.mp3"],"S08":["https://nuvugames.net/wp-content/uploads/2026/10/et-music-S08-m1.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S08-m2.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S08-m3.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S08-m4.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S08-m5.mp3"],"S09":["https://nuvugames.net/wp-content/uploads/2026/10/et-music-S09-m1.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S09-m2.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S09-m3.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S09-m4.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S09-m5.mp3"],"S10":["https://nuvugames.net/wp-content/uploads/2026/10/et-music-S10-m1.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S10-m2.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S10-m3.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S10-m4.mp3","https://nuvugames.net/wp-content/uploads/2026/10/et-music-S10-m5.mp3"]};
+const PL = {id: null, on: false, list: [], k: 0, cur: null, gen: 0, d: 1, VOL: .28, XF: 6, all: new Set(),
+  start(id) {
+    if (!CFG.music) return; if (this.on && this.id === id) return; this.stop(0);
+    const src = MUSIC[id]; if (!src) return;
+    this.id = id; this.on = true; this.gen++; this.k = 0; this.list = this.shuffle(src); this.play(this.gen, true);
+  },
+  shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; },
+  nextSrc() {
+    if (this.k >= this.list.length) { const last = this.list[this.list.length - 1]; this.list = this.shuffle(this.list); if (this.list[0] === last) this.list.push(this.list.shift()); this.k = 0; }
+    return this.list[this.k++];
+  },
+  fade(a, from, to, ms, done) {
+    const t0 = performance.now(); a.v = from; a.volume = from * this.d;
+    const step = () => { if (a.dead) return; const x = Math.min(1, (performance.now() - t0) / ms); a.v = from + (to - from) * x; a.volume = Math.max(0, Math.min(1, a.v * this.d)); if (x < 1) a.ft = setTimeout(step, 50); else if (done) done(); };
+    clearTimeout(a.ft); step();
+  },
+  play(gen, first) {
+    if (gen !== this.gen) return;
+    const a = new Audio(this.nextSrc()); a.preload = "auto"; let handed = false;
+    const handOff = () => { if (handed || gen !== this.gen) return; handed = true; const old = a; this.fade(old, old.v, 0, this.XF * 1000, () => { old.dead = true; old.pause(); this.all.delete(old); }); this.play(gen, false); };
+    a.addEventListener("timeupdate", () => { if (a.duration && a.duration - a.currentTime <= this.XF) handOff(); });
+    a.addEventListener("ended", handOff); a.addEventListener("error", () => { if (!handed) { handed = true; a.dead = true; setTimeout(() => this.play(gen, first), 1500); } });
+    this.cur = a; this.all.add(a); a.v = 0; a.volume = 0;
+    a.play().then(() => this.fade(a, 0, this.VOL, first ? 2500 : this.XF * 1000)).catch(() => { if (gen === this.gen) { this.on = false; a.dead = true; } });
+  },
+  stop(ms = 1200) {
+    this.gen++; this.on = false; const a = this.cur; this.cur = null;
+    if (a && !a.dead) { if (ms) this.fade(a, a.v || this.VOL, 0, ms, () => { a.dead = true; a.pause(); }); else { a.dead = true; a.pause(); } }
+    this.all.forEach(x => { if (x !== a && !x.dead) { x.dead = true; x.pause(); } }); this.all = new Set(a && !a.dead ? [a] : []);
+  },
+  duck(x, ms) { const set = d => { this.d = d; this.all.forEach(a => { if (!a.dead) a.volume = Math.min(1, (a.v || 0) * d); }); }; set(x); clearTimeout(this.dt); this.dt = setTimeout(() => set(1), ms); }
+};
+function introMusic(on, id) { if (on) PL.start(id || PL.id); else PL.stop(); }
 async function coverView(id, rect) {
   let s;
   try { s = await apiStory(id); } catch (e) { location.href = e.status === 401 ? `${SHOP}/fiokom/?et_return=1` : STORIES.find(x => x.id === id).url; return; }
@@ -557,7 +582,7 @@ async function coverView(id, rect) {
   const bg = new Image(); bg.onload = () => { $("#cbg").style.backgroundImage = `url(${bg.src})`; };
   bg.onerror = () => { $("#cbg").style.backgroundImage = `url(${coverFallback(s)})`; }; bg.src = coverSrc(s);
   // Start button appears only once the narration has finished (Márk 2026-10-18)
-  introMusic(true); unlockScream();
+  introMusic(true, s.id); unlockScream();
   // start button lives at the end of the text box; it fades in and the box glides down to it
   narrate(s, $("#ctyped"), () => { const b = $("#cstart"), box = $(".ctext"); if (!b) return; b.classList.add("show"); setTimeout(() => box.scrollTo({top: box.scrollHeight, behavior: "smooth"}), 60); });
   $("#cother").onclick = () => { stopNarration(); introMusic(false); el.remove(); };
