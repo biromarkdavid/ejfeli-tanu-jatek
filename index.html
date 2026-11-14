@@ -500,7 +500,7 @@ function narrate(story, el, onDone) {
 }
 
 /* ===================== main menu: catalog -> cover + narration -> settings (host) ===================== */
-const L = Object.assign({mode: 60, players: 4}, ls("lobby") || {});   // 60 min = "Alap", the basic mode (Márk 2026-10-24)
+const L = Object.assign({players: 4}, ls("lobby") || {}, {mode: 60});   // 60 min = "Alap": every new game starts on it, the last pick is not kept (Márk 2026-11-14)
 const saveL = () => ls("lobby", L);
 function coverSrc(s) { return `assets/${s.id}/cover.jpg`; }
 function coverFallback(s) {
@@ -651,8 +651,36 @@ function settingsView(s) {
     const g = Math.random().toString(36).slice(2, 10);
     const base = {v: 4, s: s.id, m: L.mode, n, ch: pick, t0: Date.now(), g, x, k: TOK[s.id]};
     removeEventListener("resize", layout); $("#cover").remove(); // the intro music keeps playing into the game
-    deal(base, 1);
+    hostNameView(base);
   };
+}
+// Márk 2026-11-14: everyone types a name (the host here, the others after the QR scan); the names replace the
+// character names in every text. They travel on the game's ntfy topic as {nm, p}.
+function hostNameView(base) {
+  app.innerHTML = `<div class="center" style="padding-top:8vh"><h2>Hogy hívnak?</h2>
+    <div class="panel"><p class="small muted">A neved kerül a karaktered neve helyére a történetben. A többiek a QR-kód beolvasása után írják be a sajátjukat, így könnyebb egymásra mutatni.</p>
+    <input id="nmi" maxlength="16" autocomplete="given-name" placeholder="Keresztneved" value="${esc(ls("myname") || "")}"></div>
+    <button class="btn" id="nmok">Tovább</button><button class="btn ghost" id="nmskip">Kihagyom</button></div>`;
+  const go = nm => {
+    if (nm) { ls("myname", nm); ls("nm-" + base.t0 + "-0", {nm}); fetch(`https://ntfy.sh/ejfeli-tanu-${base.g}`, {method: "POST", body: JSON.stringify({nm, p: 0}), keepalive: true}).catch(() => {}); }
+    else ls("nm-" + base.t0 + "-0", {skip: 1});
+    DEAL.names = nm ? {0: nm} : {}; dealListen(base); deal(base, 1);
+  };
+  $("#nmok").onclick = () => go(cleanName($("#nmi").value));
+  $("#nmskip").onclick = () => go("");
+}
+const DEAL = {es: null, names: {}};
+function dealListen(base) {
+  try {
+    if (DEAL.es) DEAL.es.close();
+    DEAL.es = new EventSource(`https://ntfy.sh/ejfeli-tanu-${base.g}/sse?since=all`);
+    DEAL.es.onmessage = ev => { try { const m = JSON.parse(JSON.parse(ev.data).message || "{}"); if (m.nm && Number.isInteger(m.p)) { DEAL.names[m.p] = cleanName(m.nm); dealJoined(); } } catch (e) {} };
+  } catch (e) {}
+}
+function dealJoined() {
+  const e = $("#joined"); if (!e) return;
+  const nm = Object.keys(DEAL.names).filter(p => +p > 0 && DEAL.names[p]).sort((a, b) => a - b).map(p => esc(DEAL.names[p]));
+  e.innerHTML = nm.length ? `Már beírta a nevét: <b>${nm.join(", ")}</b>` : "";
 }
 function deal(base, i) {
   const n = base.n;
@@ -662,16 +690,18 @@ function deal(base, i) {
     ls("st-" + base.t0 + "-0", {userStep: 0, tipSeen: {}, start, obs: []});
     fetch(`https://ntfy.sh/ejfeli-tanu-${base.g}`, {method: "POST", body: JSON.stringify({start}), keepalive: true}).catch(() => {});
     // switch to the game without a reload, so the music keeps playing (a hash change would reload the page)
+    if (DEAL.es) { DEAL.es.close(); DEAL.es = null; }
     const code = encodeCard({...base, p: 0}); history.pushState(null, "", location.href.split("#")[0] + "#c=" + code); startGame(code); return;
   }
   app.innerHTML = `<h2 class="center" style="margin-top:4vh">${i + 1}. játékos</h2><p class="center muted">Olvasd be a telefonoddal. Csak a saját kódodat nézd!</p>
     <div class="center"><div class="qrbox" id="qr"></div></div>
-    <p class="center small muted">${i}/${n - 1}</p>
+    <p class="center small muted">${i}/${n - 1}</p><p class="center small" id="joined"></p>
     <button class="btn" id="next">${i < n - 1 ? "Következő játékos" : "Mindenki beolvasta: indulás!"}</button>
     <button class="btn ghost" id="back">Vissza</button>`;
   new QRCode($("#qr"), {text: cardUrl({...base, p: i}), width: 240, height: 240, correctLevel: QRCode.CorrectLevel.L});
+  dealJoined();
   $("#next").onclick = () => deal(base, i + 1);
-  $("#back").onclick = () => i > 1 ? deal(base, i - 1) : lobby();
+  $("#back").onclick = () => i > 1 ? deal(base, i - 1) : hostNameView(base);
 }
 
 /* ===================== game (every phone) ===================== */
@@ -694,6 +724,89 @@ function resolveStory(raw, cast) {
   return S2;
 }
 const ST = {userStep: 0, key: "", tipSeen: {}, start: 0};
+
+/* ---------- player names in the texts, with Hungarian suffixes (Márk 2026-11-14) ---------- */
+// A character name in a text is found with whatever suffix it carries ("Merlinhez", "Morganát", "Guinevere-rel"),
+// the suffix is read as a case, and the player's name gets the same case built by the Hungarian rules (vowel harmony,
+// a/e lengthening, -val/-vel assimilation, linking vowel of -t). An unknown suffix leaves the original word alone.
+const NAMES = {};   // player index -> name
+let RAW = null;
+function cleanName(v) {
+  return String(v || "").replace(/[<>"&]/g, "").trim().replace(/\s+/g, " ").slice(0, 16).trim().split(" ")
+    .map(w => w.charAt(0).toUpperCase() + (w.slice(1) === w.slice(1).toUpperCase() ? w.slice(1).toLowerCase() : w.slice(1))).join(" ");
+}
+const HUV = "aáeéiíoóöőuúüű";
+function huHarm(w) {   // 0 back (Annának, Zsófinak), 1 front (Péternek, Lőrinchez), 2 front rounded (Gergőhöz); a final i/í/y is neutral
+  const v = [...w].filter(c => HUV.includes(c) || c === "y");
+  let skipped = false;
+  for (let i = v.length - 1; i >= 0; i--) { const c = v[i]; if ("iíy".includes(c)) { skipped = true; continue; } return "aáoóuú".includes(c) ? 0 : "öőüű".includes(c) && !skipped ? 2 : 1; }
+  return 1;
+}
+const HU_SUF = {dat: ["nak", "nek", "nek"], abl: ["tól", "től", "től"], all: ["hoz", "hez", "höz"], ela: ["ból", "ből", "ből"], sub: ["ra", "re", "re"],
+  ade: ["nál", "nél", "nél"], ine: ["ban", "ben", "ben"], ill: ["ba", "be", "be"], del: ["ról", "ről", "ről"], ter: ["ig", "ig", "ig"], cau: ["ért", "ért", "ért"],
+  poss: ["é", "é", "é"], ess: ["ként", "ként", "ként"]};
+const HU_PARSE = [[/^[oeöa]?t$/, "acc"], [/^n[ae]k$/, "dat"], [/^t[óő]l$/, "abl"], [/^h[oeö]z$/, "all"], [/^b[óő]l$/, "ela"], [/^r[ae]$/, "sub"], [/^n[áé]l$/, "ade"],
+  [/^b[ae]n$/, "ine"], [/^b[ae]$/, "ill"], [/^r[óő]l$/, "del"], [/^ig$/, "ter"], [/^ért$/, "cau"], [/^é$/, "poss"], [/^ként$/, "ess"],
+  [/^(v|[bcdfghjklmnprstvzxy]{1,3})[ae]l$/, "ins"], [/^[oeö]?n$/, "sup"]];
+function huCase(suf) { suf = suf.replace(/^-/, ""); if (!suf) return "nom"; for (const [re, k] of HU_PARSE) if (re.test(suf)) return k; return null; }
+function huForm(name, cas) {
+  if (cas === "nom") return name;
+  const sp = name.lastIndexOf(" "), pre = name.slice(0, sp + 1), w = name.slice(sp + 1), lw = w.toLowerCase(), h = huHarm(lw);
+  const nonL = !/\p{L}$/u.test(w), hy = nonL ? "-" : "";
+  const vEnd = nonL || HUV.includes(lw.slice(-1)) || (lw.endsWith("y") && !/[áeéo]ly$/.test(lw));   // Molly, Henry: like i; Mihály, Gergely: consonant
+  const dbl = !vEnd && /([^aáeéiíoóöőuúüű])\1$/.test(lw);
+  const len = (cas !== "ess" && !nonL && /[ae]$/.test(lw)) ? w.slice(0, -1) + ({a: "á", e: "é", A: "Á", E: "É"})[w.slice(-1)] : w;   // Anna -> Annát
+  if (cas === "acc") return pre + len + hy + (vEnd || (dbl && /[jlnrsz]$/.test(lw)) || /[aáeéiíoóöőuúüű](j|l|n|r|zs|sz|z|s|ly|ny)$/.test(lw) ? "t" : ["ot", "et", "öt"][h]);
+  if (cas === "ins") {
+    if (vEnd) return pre + len + hy + (h ? "vel" : "val");
+    if (dbl) return pre + w + "-" + lw.slice(-1) + (h ? "el" : "al");
+    const dg = (lw.match(/(dzs|sz|zs|cs|gy|ny|ly|ty|dz)$/) || [lw.slice(-1)])[0];
+    return pre + w.slice(0, w.length - dg.length) + dg[0] + w.slice(w.length - dg.length) + (h ? "el" : "al");   // Márkkal, Balázzsal, Mihállyal
+  }
+  if (cas === "sup") return pre + (vEnd ? len + hy + "n" : w + ["on", "en", "ön"][h]);
+  return pre + len + hy + HU_SUF[cas][h];
+}
+// place names on the drawn maps keep the original name ("Merlin tornya", "Héra kertje")
+const PLACE_AFTER = /^ (torny|kertj|kertb|kerté|műhely|kapuj|kapuh|kapun|kapuná)/;
+function renameStory(S2) {
+  const who = {};
+  P.ch.forEach((slot, p) => { const nm = NAMES[p], c = S2.chars[slot]; if (!nm || !c) return;
+    for (const f of new Set([c.name, ...(c.alias || [])])) { if (!/^[A-ZÁÉÍÓÖŐÚÜŰ]/.test(f)) continue; who[f] = p; if (/[aeo]$/.test(f)) who[f.slice(0, -1) + ({a: "á", e: "é", o: "ó"})[f.slice(-1)]] = p; } });
+  const forms = Object.keys(who).sort((a, b) => b.length - a.length);
+  if (!forms.length) return S2;
+  const re = new RegExp(`(?:(?:Sir|Lady|Lord|Dr\\.) )?(?<!\\p{L})(${forms.map(f => f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(-?\\p{Ll}*)(?!\\p{L})`, "gu");
+  const sub = str => str.replace(re, (m, f, suf, off, all) => {
+    if (PLACE_AFTER.test(all.slice(off + m.length, off + m.length + 9))) return m;
+    const cas = huCase(suf); return cas ? huForm(NAMES[who[f]], cas) : m;
+  });
+  const D = (v, k) => typeof v === "string" ? (k === "id" ? v : sub(v)) : Array.isArray(v) ? v.map(x => D(x)) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([kk, x]) => [kk, D(x, kk)])) : v;
+  const out = D(S2);
+  P.ch.forEach((slot, p) => { if (NAMES[p] && out.chars[slot]) { out.chars[slot].cname = S2.chars[slot].name; out.chars[slot].name = NAMES[p]; } });
+  return out;
+}
+function applyNames() {
+  if (!RAW) return;
+  S = renameStory(resolveStory(RAW, P.ch)); ME = S.chars[SLOT];
+  if (!$("#modal") && !$("#photo") && !/tip/.test(ST.key) && !(document.activeElement && document.activeElement.id === "nmi")) { ST.key = ""; VOTE.key = ""; }
+}
+const nmKey = () => "nm-" + P.t0 + "-" + P.p;
+function needName() { return P.p !== 0 && !ls(nmKey()) && (!ST.start || NOW() < ST.start + INTRO * 1000 / P.x); }
+function nameView() {
+  const others = Object.keys(NAMES).filter(p => +p !== P.p && NAMES[p]).map(p => esc(NAMES[p]));
+  app.innerHTML = `<div class="center" style="padding-top:10vh"><h1>${esc(S.title)}</h1>
+    <div class="panel"><h3 style="margin-top:0">Hogy hívnak?</h3><p class="small muted">A neved kerül a karaktered neve helyére a történetben, így könnyebb egymásra mutatni.</p>
+    <input id="nmi" maxlength="16" autocomplete="given-name" placeholder="Keresztneved" value="${esc(ls("myname") || "")}">
+    <p class="small" id="nmerr" style="color:var(--red);min-height:1em;margin:8px 0 0"></p>${others.length ? `<p class="small muted" style="margin:4px 0 0">Már itt van: ${others.join(", ")}</p>` : ""}</div>
+    <button class="btn" id="nmok">Mehet</button><button class="btn ghost" id="nmskip">Kihagyom</button></div>`;
+  const done = nm => { ls(nmKey(), nm ? {nm} : {skip: 1}); if (nm) { ls("myname", nm); NAMES[P.p] = nm; syncPost({nm, p: P.p}); } applyNames(); ST.key = ""; loop(); };
+  $("#nmok").onclick = () => {
+    const nm = cleanName($("#nmi").value);
+    if (!nm) { $("#nmerr").textContent = "Írd be a neved, vagy koppints a Kihagyomra."; return; }
+    if (Object.keys(NAMES).some(p => +p !== P.p && (NAMES[p] || "").toLowerCase() === nm.toLowerCase())) { $("#nmerr").textContent = "Ezt a nevet már valaki beírta. Írj mellé egy betűt, például: " + nm + " K."; return; }
+    done(nm);
+  };
+  $("#nmskip").onclick = () => done("");
+}
 const lab = j => S.chars[P.ch[j]].name;
 // The host starts the game for everyone ("Mindenki beolvasta: indulás!"); the start moment reaches the other
 // phones through a tiny public pub/sub topic (ntfy.sh, random topic per game). Offline phones get a manual start button.
@@ -706,6 +819,7 @@ function syncListen() {
       try {
         const d = JSON.parse(ev.data), m = JSON.parse(d.message || "{}");
         if (m.start && (!ST.start || m.start < ST.start)) { ST.start = m.start; saveST(); ST.key = ""; loop(); }
+        if (m.nm && Number.isInteger(m.p) && m.p >= 0 && m.p < P.ch.length) { const nm = cleanName(m.nm); if (nm && NAMES[m.p] !== nm) { NAMES[m.p] = nm; applyNames(); } }
         if ((m.v || m.g || m.s || m.l) && !SYNC.msgs.some(x => x.id === d.id)) SYNC.msgs.push({id: d.id, t: d.time * 1000, m});
       } catch (e) {}
     };
@@ -736,7 +850,9 @@ async function startGame(hash) {
     app.innerHTML = `<div class="center" style="padding-top:20vh"><h2>Lejárt a játék linkje</h2><p>A meghívó 24 óráig érvényes. Kérd meg a házigazdát, hogy indítson új játékot, és olvasd be újra a QR-kódot.</p></div>`; return;
   }
   if (typeof P.n === "number") P.n = Array.from({length: P.n}, (_, i) => `${i + 1}. játékos`);
-  S = resolveStory(raw, P.ch); SLOT = P.ch[P.p]; ME = S.chars[SLOT];
+  RAW = raw; SLOT = P.ch[P.p];
+  const mine = ls(nmKey()); if (mine && mine.nm) NAMES[P.p] = mine.nm;
+  S = renameStory(resolveStory(raw, P.ch)); ME = S.chars[SLOT];
   const saved = ls("st-" + P.t0 + "-" + P.p); if (saved) Object.assign(ST, saved);
   ST.obs = ST.obs || [];
   ST.key = "";
@@ -751,11 +867,13 @@ function loop() {
   const t = TL();
   let key = t.ph === "wait" ? "wait" : t.ph === "intro" ? "read" + Math.min(ST.userStep, 3) : t.ph === "end" ? "end" : "scene";
   if (t.ph === "tip") key += "tip" + t.i;
+  if (needName()) key = "name";
   if (key !== ST.key) { ST.key = key; render(t); }
   update(t);
 }
 function render(t) {
   closeModal();
+  if (ST.key === "name") return nameView();
   if (t.ph === "wait") return waitView();
   if (t.ph === "intro") return readView(ST.userStep);
   if (t.ph === "end") return ls("vote-" + P.t0) ? voteFlow() : endView();
@@ -777,7 +895,7 @@ function update(t) {
 }
 function waitView() {
   app.innerHTML = `<div class="center" style="padding-top:12vh"><h1>${esc(S.title)}</h1>
-    <div class="panel"><p>Várjuk, hogy mindenki beolvassa a kódját.</p><p class="small muted">Amikor a játékvezető elindítja, minden telefonon egyszerre jön a saját karaktered, utána közösen indul az óra.</p></div>
+    <div class="panel"><p>${NAMES[P.p] ? `Szia, ${esc(NAMES[P.p])}! ` : ""}Várjuk, hogy mindenki beolvassa a kódját.</p>${Object.keys(NAMES).filter(p => NAMES[p]).length > 1 ? `<p class="small">Már itt van: ${Object.keys(NAMES).filter(p => NAMES[p]).sort((a, b) => a - b).map(p => esc(NAMES[p])).join(", ")}</p>` : ""}<p class="small muted">Amikor a játékvezető elindítja, minden telefonon egyszerre jön a saját karaktered, utána közösen indul az óra.</p></div>
     <button class="btn ghost" id="manual" style="display:none">Nem indul? Indítás kézzel</button></div>`;
   setTimeout(() => { const b = $("#manual"); if (b) b.style.display = "block"; }, 20000);
   $("#manual").onclick = () => { ST.start = Date.now(); saveST(); ST.key = ""; loop(); };
@@ -809,7 +927,7 @@ function myCard(skipPublic) {
 function readView(step) {
   let h = readHead(Math.min(step, 2));
   if (step === 0) {
-    h += `<div class="row" style="align-items:flex-start;gap:14px;margin-top:8px">${pimg(S, SLOT, {cls: "pfp"})}<div style="flex:2"><h2 style="margin:0">${esc(ME.name)}</h2><p class="muted small">${esc(ME.title)}</p>
+    h += `<div class="row" style="align-items:flex-start;gap:14px;margin-top:8px">${pimg(S, SLOT, {cls: "pfp"})}<div style="flex:2"><h2 style="margin:0">${esc(ME.name)}</h2><p class="muted small">${ME.cname ? esc(ME.cname) + ", " : ""}${esc(ME.title)}</p>
       <div class="role ${ME.role}">${ME.roleName}</div></div></div>${myRole()}`;
   } else if (step === 1) {
     h += `<h2>Te és ${esc(S.victim.split(",")[0])}</h2>${myCard()}
@@ -943,7 +1061,7 @@ function closeModal() { const m = $("#modal"); if (m) { if (m.querySelector("#mt
 function zoomable(html) { return `<div class="zoomwrap" onclick="this.classList.toggle('z')">${html}</div><p class="small muted center">Koppints a nagyításhoz.</p>`; }
 function charModal(slot) {
   const c = S.chars[slot];
-  modal(`<div class="chead"><div class="av">${pimg(S, slot)}</div><div style="flex:1"><h2 style="margin:0">${esc(c.name)}</h2><p class="muted small" style="margin:2px 0 0">${esc(c.title)}</p></div>
+  modal(`<div class="chead"><div class="av">${pimg(S, slot)}</div><div style="flex:1"><h2 style="margin:0">${esc(c.name)}</h2><p class="muted small" style="margin:2px 0 0">${c.cname ? esc(c.cname) + ", " : ""}${esc(c.title)}</p></div>
     <button class="hbtn zoomb" id="zoomb" title="Nagyítás">${icon("zoom")}</button></div>
     <div class="kv"><b>Mindenki látta</b>${esc(c.dispute)}</div><div class="kv"><b>Mindenki tudja</b>${esc(c.weapon)}</div>${publicObs(slot)}
     ${slot === SLOT ? `<div class="mine"><div class="row" style="align-items:center"><h3 style="margin:0">${icon("lock", "inl")} Csak neked</h3><div class="role ${ME.role}" style="font-size:1.15rem;text-align:right">${ME.roleName}</div></div>
@@ -1181,7 +1299,7 @@ function voteRender(st, revealing, iVoted, guess) {
       // one closing screen instead of 2-3 steps: verdict, true roles, solution and missions (as toggles), new game
       const more = `<div class="rvmore"><details class="tog"><summary>Mi történt valójában</summary><p>${esc(S.solution)}</p></details>
         <details class="tog"><summary>Személyes titkok</summary>${P.ch.map(sl => `<p class="small"><b>${esc(S.chars[sl].name)}</b>: ${esc(S.chars[sl].secret)}</p>`).join("")}<p class="small muted">Meséljétek el, ki mit titkolt!</p></details></div>`;
-      h = h.replace('<div class="reveal">', '<div class="reveal done">').replace(/<\/div><\/div>$/, `${roles}${more}<button class="btn" id="new">Új játék</button>${bugLink()}</div></div>`);
+      h = h.replace('<div class="reveal">', '<div class="reveal done">').replace(/<\/div><\/div>$/, `${roles}${more}<button class="btn" id="new">Új játék</button><button class="btn ghost" id="exit">Kilépés</button>${bugLink()}</div></div>`);
     }
   }
   app.innerHTML = h; window.scrollTo(0, 0);
@@ -1192,6 +1310,7 @@ function voteRender(st, revealing, iVoted, guess) {
     $("#gcast").onclick = () => { $("#gcast").disabled = true; syncPost({g: {j: sel}}); };
   }
   if ($("#new")) $("#new").onclick = () => { location.hash = ""; location.reload(); };
+  if ($("#exit")) $("#exit").onclick = exitGame;
   if (st.phase === "verdict" && VOTE.outcome && !VOTE.toned) { VOTE.toned = 1; tone(VOTE.outcome === "good" ? 660 : 160, 1.2, "triangle", .3); }
 }
 function finalView(outcome) {
@@ -1199,10 +1318,13 @@ function finalView(outcome) {
     <div class="panel"><h3>Mi történt valójában</h3><p>${esc(S.solution)}</p></div><h3>Ki kicsoda volt</h3><div class="grid">`;
   P.ch.forEach(sl => { const c = S.chars[sl], ev = c.role === "G" || c.role === "B"; h += `<div class="c">${pimg(S, sl, {evil: ev})}<b>${esc(c.name)}</b><br><span class="badge ${ev ? "red" : c.role === "S" ? "blue" : ""}">${c.roleName}</span></div>`; });
   h += `</div><div class="panel"><h3>Személyes titkok</h3><p class="small muted">Meséljétek el, ki mit titkolt!</p>` +
-    P.ch.map(sl => `<p class="small"><b>${esc(S.chars[sl].name)}</b>: ${esc(S.chars[sl].secret)}</p>`).join("") + `</div><button class="btn" id="new">Új játék</button>${bugLink()}`;
+    P.ch.map(sl => `<p class="small"><b>${esc(S.chars[sl].name)}</b>: ${esc(S.chars[sl].secret)}</p>`).join("") + `</div><button class="btn" id="new">Új játék</button><button class="btn ghost" id="exit">Kilépés</button>${bugLink()}`;
   app.innerHTML = h; window.scrollTo(0, 0);
   $("#new").onclick = () => { location.hash = ""; location.reload(); };
+  $("#exit").onclick = exitGame;
 }
+// Márk 2026-11-14: players go to the Éjféli Tanú home page, the host (the buyer) to their own account
+function exitGame() { stopNarration(); stopMusic(); location.href = P && P.p === 0 ? SHOP + "/fiokom/" : SHOP + "/ejfeli-tanu/"; }
 /* ---------- offline fallback: the old secret vote on the host phone, passed around ---------- */
 function voteFlow() {
   const k = "vote-" + P.t0, V = ls(k) || {i: 0, stage: "pass", votes: {}}, n = P.n.length, save = () => ls(k, V);
@@ -1296,9 +1418,10 @@ function voteFlow() {
     P.ch.forEach((sl, j) => { const c = S.chars[sl], ev = c.role === "G" || c.role === "B"; h += `<div class="c">${pimg(S, sl, {evil: ev})}<b>${esc(c.name)}</b><br><span class="badge ${ev ? "red" : c.role === "S" ? "blue" : ""}">${c.roleName}</span></div>`; });
     h += `</div><div class="panel"><h3>Személyes titkok</h3><p class="small muted">Meséljétek el, ki mit titkolt!</p>` +
       P.ch.map((sl, j) => `<p class="small"><b>${esc(S.chars[sl].name)}</b>: ${esc(S.chars[sl].secret)}</p>`).join("") +
-      `</div><button class="btn" id="new">Új játék</button>${bugLink()}`;
+      `</div><button class="btn" id="new">Új játék</button><button class="btn ghost" id="exit">Kilépés</button>${bugLink()}`;
     app.innerHTML = h;
     $("#new").onclick = () => { location.hash = ""; location.reload(); };
+    $("#exit").onclick = exitGame;
   }
   window.scrollTo(0, 0);
 }
